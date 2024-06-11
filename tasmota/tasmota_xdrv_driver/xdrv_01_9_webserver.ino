@@ -584,6 +584,7 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
 #endif  // Not FIRMWARE_MINIMAL_ONLY
 #ifdef BLINX
   { "bg", HTTP_ANY, HandleHttpRequestBlinxGet },
+  { "bc", HTTP_ANY, HandleHttpRequestBlinxConfigAnalog }, // config analog port, using ModuleSaveSettings
 #endif // BLINX
 };
 
@@ -3277,6 +3278,56 @@ void HandleHttpRequestBlinxGet(void)
 
   WSContentEnd();
 
+  return;
+}
+
+
+uint32_t name_to_id_type(String input_name){
+  char stemp[30];
+  for (uint32_t i = 0; i < nitems(kGpioNiceList); i++) {
+    uint32_t ridx = pgm_read_word(kGpioNiceList + i) & 0xFFE0;
+    uint32_t midx = BGPIO(ridx);
+    if (String(GetTextIndexed(stemp, sizeof(stemp), midx, kSensorNames)) == input_name){
+      return ridx;
+    }
+  }
+}
+
+void HandleHttpRequestBlinxConfigAnalog(void)
+{
+ 
+  Settings->last_module = Settings->module;
+  Settings->module = USER_MODULE;
+  SetModuleType();
+  myio template_gp;
+  TemplateGpios(&template_gp);
+
+
+  if(Webserver->hasArg(F("port1A"))){ // AO GPIO2 // sure : test for the led
+    String portString = Webserver->arg(F("port1A"));
+    Settings->my_gp.io[2] = name_to_id_type(portString) + 5;
+  }
+  if(Webserver->hasArg(F("port1B"))){ // AO GPIO3
+    String portString = Webserver->arg(F("port1B"));
+    Settings->my_gp.io[3] = name_to_id_type(portString) + 6;
+  }
+  if(Webserver->hasArg(F("port3A"))){ // AO GPIO4
+    String portString = Webserver->arg(F("port3A"));
+    Settings->my_gp.io[4] = name_to_id_type(portString) + 7;
+  }
+  if(Webserver->hasArg(F("port3B"))){ // AO GPIO5
+    String portString = Webserver->arg(F("port3B"));
+    Settings->my_gp.io[5] = name_to_id_type(portString) + 8;
+  }
+
+  WSContentBegin(200, CT_HTML);
+  WSContentSend_P(PSTR("Donne")); 
+  WSContentEnd();
+
+  char command[32];
+  snprintf_P(command, sizeof(command), PSTR(D_CMND_BACKLOG "0 " D_CMND_MODULE ";" D_CMND_GPIO));
+  ExecuteWebCommand(command);
+  WebRestart(1);
   return;
 }
 
