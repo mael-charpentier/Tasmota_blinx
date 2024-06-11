@@ -585,6 +585,7 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
 #ifdef BLINX
   { "bg", HTTP_ANY, HandleHttpRequestBlinxGet },
   { "bc", HTTP_ANY, HandleHttpRequestBlinxConfigAnalog }, // config analog port, using ModuleSaveSettings
+  { "br", HTTP_ANY, HandleHttpRequestBlinxRelay }, // for the relay, led, ...
 #endif // BLINX
 };
 
@@ -3328,6 +3329,40 @@ void HandleHttpRequestBlinxConfigAnalog(void)
   snprintf_P(command, sizeof(command), PSTR(D_CMND_BACKLOG "0 " D_CMND_MODULE ";" D_CMND_GPIO));
   ExecuteWebCommand(command);
   WebRestart(1);
+  return;
+}
+
+
+void HandleHttpRequestBlinxRelay(void)
+{
+  String deviceString = Webserver->arg(F("device"));
+  int device;
+
+  if(deviceString == "Port1A"){
+    device = 5;
+  } else if(deviceString == "Port1B"){
+    device = 6;
+  } else if(deviceString == "Port2A"){
+    device = 7;
+  } else if(deviceString == "Port2B"){
+    device = 8;
+  } else {
+    return;
+  }
+
+  if (device < 1) { return; };
+
+  String whatToDoString = Webserver->arg(F("action"));
+  int whatToDo = std::stoi(whatToDoString.c_str());
+  
+  if (whatToDo < 0 || whatToDo > 4) { return; };
+  
+  ExecuteCommandPower(device, whatToDo, SRC_IGNORE);
+
+  WSContentBegin(200, CT_HTML);
+  WSContentSend_P(PSTR("Donne")); 
+  WSContentEnd();
+
   return;
 }
 
