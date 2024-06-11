@@ -584,6 +584,11 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
 #endif  // Not FIRMWARE_MINIMAL_ONLY
 #ifdef BLINX
   { "bg", HTTP_ANY, HandleHttpRequestBlinxGet },
+  { "bc", HTTP_ANY, HandleHttpRequestBlinxConfigAnalog }, // config analog port, using ModuleSaveSettings
+  { "br", HTTP_ANY, HandleHttpRequestBlinxRelay }, // for the relay, led, ...
+  { "bd", HTTP_ANY, HandleHttpRequestBlinxDisplay }, // for display
+  { "bl", HTTP_ANY, HandleHttpRequestBlinxLight }, // for light
+  { "bb", HTTP_ANY, HandleHttpRequestBlinxPWM }, // for motor, buzzer
 #endif // BLINX
 };
 
@@ -3276,6 +3281,221 @@ void HandleHttpRequestBlinxGet(void)
   }
 
   WSContentEnd();
+
+  return;
+}
+
+
+uint32_t name_to_id_type(String input_name){
+  char stemp[30];
+  for (uint32_t i = 0; i < nitems(kGpioNiceList); i++) {
+    uint32_t ridx = pgm_read_word(kGpioNiceList + i) & 0xFFE0;
+    uint32_t midx = BGPIO(ridx);
+    if (String(GetTextIndexed(stemp, sizeof(stemp), midx, kSensorNames)) == input_name){
+      return ridx;
+    }
+  }
+}
+
+void HandleHttpRequestBlinxConfigAnalog(void)
+{
+ 
+  Settings->last_module = Settings->module;
+  Settings->module = USER_MODULE;
+  SetModuleType();
+  myio template_gp;
+  TemplateGpios(&template_gp);
+
+
+  if(Webserver->hasArg(F("port1A"))){ // AO GPIO2 // sure : test for the led
+    String portString = Webserver->arg(F("port1A"));
+    Settings->my_gp.io[2] = name_to_id_type(portString) + 5;
+  }
+  if(Webserver->hasArg(F("port1B"))){ // AO GPIO3
+    String portString = Webserver->arg(F("port1B"));
+    Settings->my_gp.io[3] = name_to_id_type(portString) + 6;
+  }
+  if(Webserver->hasArg(F("port3A"))){ // AO GPIO4
+    String portString = Webserver->arg(F("port3A"));
+    Settings->my_gp.io[4] = name_to_id_type(portString) + 7;
+  }
+  if(Webserver->hasArg(F("port3B"))){ // AO GPIO5
+    String portString = Webserver->arg(F("port3B"));
+    Settings->my_gp.io[5] = name_to_id_type(portString) + 8;
+  }
+
+  WSContentBegin(200, CT_HTML);
+  WSContentSend_P(PSTR("Donne")); 
+  WSContentEnd();
+
+  char command[32];
+  snprintf_P(command, sizeof(command), PSTR(D_CMND_BACKLOG "0 " D_CMND_MODULE ";" D_CMND_GPIO));
+  ExecuteWebCommand(command);
+  WebRestart(1);
+  return;
+}
+
+
+void HandleHttpRequestBlinxRelay(void)
+{
+  String deviceString = Webserver->arg(F("device"));
+  int device;
+
+  if(deviceString == "Port1A"){
+    device = 5;
+  } else if(deviceString == "Port1B"){
+    device = 6;
+  } else if(deviceString == "Port2A"){
+    device = 7;
+  } else if(deviceString == "Port2B"){
+    device = 8;
+  } else {
+    return;
+  }
+
+  if (device < 1) { return; };
+
+  String whatToDoString = Webserver->arg(F("action"));
+  int whatToDo = std::stoi(whatToDoString.c_str());
+  
+  if (whatToDo < 0 || whatToDo > 4) { return; };
+  
+  ExecuteCommandPower(device, whatToDo, SRC_IGNORE);
+
+  WSContentBegin(200, CT_HTML);
+  WSContentSend_P(PSTR("Donne")); 
+  WSContentEnd();
+
+  return;
+}
+
+
+void HandleHttpRequestBlinxDisplay(void)
+{
+  char svalue[32];                   // Command and number parameter
+
+  if(Webserver->hasArg(F("DisplayMode"))){
+    String DisplayModeString = Webserver->arg(F("DisplayMode"));
+    int DisplayMode = std::stoi(DisplayModeString.c_str());
+    if (DisplayMode < 0 || DisplayMode > 5){ return; }
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplayMode %d"), DisplayMode);
+    ExecuteWebCommand(svalue);
+  }
+  if(Webserver->hasArg(F("DisplayDimmer"))){
+    String DisplayDimmerString = Webserver->arg(F("DisplayDimmer"));
+    int DisplayDimmer = std::stoi(DisplayDimmerString.c_str());
+    if (DisplayDimmer < 0 || DisplayDimmer > 100){ return; }
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplayDimmer %d"), DisplayDimmer);
+    ExecuteWebCommand(svalue);
+  }
+  if(Webserver->hasArg(F("DisplaySize"))){
+    String DisplaySizeString = Webserver->arg(F("DisplaySize"));
+    int DisplaySize = std::stoi(DisplaySizeString.c_str());
+    if (DisplaySize < 1 || DisplaySize > 4){ return; }
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplaySize %d"), DisplaySize);
+    ExecuteWebCommand(svalue);
+  }
+  if(Webserver->hasArg(F("DisplayRotate"))){
+    String DisplayRotateString = Webserver->arg(F("DisplayRotate"));
+    int DisplayRotate = std::stoi(DisplayRotateString.c_str());
+    if (DisplayRotate < 0 || DisplayRotate > 3){ return; }
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplayRotate %d"), DisplayRotate);
+    ExecuteWebCommand(svalue);
+  }
+  if(Webserver->hasArg(F("DisplayText"))){
+    String DisplayTextString = Webserver->arg(F("DisplayText"));
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplayText %s"), DisplayText);
+    ExecuteWebCommand(svalue);
+  }
+
+  WSContentBegin(200, CT_HTML);
+  WSContentSend_P(PSTR("Donne")); 
+  WSContentEnd();
+
+  return;
+}
+
+
+void HandleHttpRequestBlinxLight(void)
+{
+#ifdef USE_LIGHT
+  char tmp[8];                       // WebGetArg numbers only
+  char svalue[32];                   // Command and number parameter
+  char webindex[5];                  // WebGetArg name
+
+  WebGetArg(PSTR("d0"), tmp, sizeof(tmp));  // 0 - 100 Dimmer value
+  if (strlen(tmp)) {
+    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_DIMMER " %s"), tmp);
+    ExecuteWebCommand(svalue);
+  }
+  WebGetArg(PSTR("w0"), tmp, sizeof(tmp));  // 0 - 100 White value
+  if (strlen(tmp)) {
+    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_WHITE " %s"), tmp);
+    ExecuteWebCommand(svalue);
+  }
+  uint32_t light_device = LightDevice();  // Channel number offset
+  uint32_t pwm_channels = (TasmotaGlobal.light_type & 7) > LST_MAX ? LST_MAX : (TasmotaGlobal.light_type & 7);
+  for (uint32_t j = 0; j < pwm_channels; j++) {
+    snprintf_P(webindex, sizeof(webindex), PSTR("e%d"), j +1);
+    WebGetArg(webindex, tmp, sizeof(tmp));  // 0 - 100 percent
+    if (strlen(tmp)) {
+      snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_CHANNEL "%d %s"), j +light_device, tmp);
+      ExecuteWebCommand(svalue);
+    }
+  }
+  WebGetArg(PSTR("t0"), tmp, sizeof(tmp));  // 153 - 500 Color temperature
+  if (strlen(tmp)) {
+    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_COLORTEMPERATURE " %s"), tmp);
+    ExecuteWebCommand(svalue);
+  }
+  WebGetArg(PSTR("h0"), tmp, sizeof(tmp));  // 0 - 359 Hue value
+  if (strlen(tmp)) {
+    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_HSBCOLOR  "1 %s"), tmp);
+    ExecuteWebCommand(svalue);
+  }
+  WebGetArg(PSTR("n0"), tmp, sizeof(tmp));  // 0 - 99 Saturation value
+  if (strlen(tmp)) {
+    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_HSBCOLOR  "2 %s"), tmp);
+    ExecuteWebCommand(svalue);
+  }
+
+  WSContentBegin(200, CT_HTML);
+  WSContentSend_P(PSTR("Change done.")); 
+  WSContentEnd();
+#endif // USE_LIGHT
+
+  return;
+}
+
+
+void HandleHttpRequestBlinxPWM(void)
+{
+  char tmp[8];                       // WebGetArg numbers only
+
+  WebGetArg(PSTR("index"), tmp, sizeof(tmp));
+  if (strlen(tmp)) {
+    int index = std::stoi(tmp);
+
+    WebGetArg(PSTR("freq"), tmp, sizeof(tmp));
+    if (strlen(tmp)) {
+      int32_t pin = Pin(GPIO_PWM1, index);
+      analogWriteFreq(std::stoi(tmp), pin);
+    }
+
+    WebGetArg(PSTR("value"), tmp, sizeof(tmp));
+    if (strlen(tmp)) {
+      TasmotaGlobal.pwm_value[index] = std::stoi(tmp);
+    }
+    WebGetArg(PSTR("phase"), tmp, sizeof(tmp));
+    if (strlen(tmp)) {
+      TasmotaGlobal.pwm_phase[index] = std::stoi(tmp);
+    }
+    PwmApplyGPIO(false);
+
+    WSContentBegin(200, CT_HTML);
+    WSContentSend_P(PSTR("Change done.")); 
+    WSContentEnd();
+  }
 
   return;
 }
