@@ -588,6 +588,7 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
   { "br", HTTP_ANY, HandleHttpRequestBlinxRelay }, // for the relay, led, ...
   { "bd", HTTP_ANY, HandleHttpRequestBlinxDisplay }, // for display
   { "bl", HTTP_ANY, HandleHttpRequestBlinxLight }, // for light
+  { "bb", HTTP_ANY, HandleHttpRequestBlinxPWM }, // for motor, buzzer
 #endif // BLINX
 };
 
@@ -3462,6 +3463,39 @@ void HandleHttpRequestBlinxLight(void)
   WSContentSend_P(PSTR("Change done.")); 
   WSContentEnd();
 #endif // USE_LIGHT
+
+  return;
+}
+
+
+void HandleHttpRequestBlinxPWM(void)
+{
+  char tmp[8];                       // WebGetArg numbers only
+
+  WebGetArg(PSTR("index"), tmp, sizeof(tmp));
+  if (strlen(tmp)) {
+    int index = std::stoi(tmp);
+
+    WebGetArg(PSTR("freq"), tmp, sizeof(tmp));
+    if (strlen(tmp)) {
+      int32_t pin = Pin(GPIO_PWM1, index);
+      analogWriteFreq(std::stoi(tmp), pin);
+    }
+
+    WebGetArg(PSTR("value"), tmp, sizeof(tmp));
+    if (strlen(tmp)) {
+      TasmotaGlobal.pwm_value[index] = std::stoi(tmp);
+    }
+    WebGetArg(PSTR("phase"), tmp, sizeof(tmp));
+    if (strlen(tmp)) {
+      TasmotaGlobal.pwm_phase[index] = std::stoi(tmp);
+    }
+    PwmApplyGPIO(false);
+
+    WSContentBegin(200, CT_HTML);
+    WSContentSend_P(PSTR("Change done.")); 
+    WSContentEnd();
+  }
 
   return;
 }
