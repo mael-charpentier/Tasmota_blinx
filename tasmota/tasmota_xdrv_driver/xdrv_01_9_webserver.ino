@@ -586,6 +586,7 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
   { "bg", HTTP_ANY, HandleHttpRequestBlinxGet },
   { "bc", HTTP_ANY, HandleHttpRequestBlinxConfigAnalog }, // config analog port, using ModuleSaveSettings
   { "br", HTTP_ANY, HandleHttpRequestBlinxRelay }, // for the relay, led, ...
+  { "bd", HTTP_ANY, HandleHttpRequestBlinxDisplay }, // for display
 #endif // BLINX
 };
 
@@ -3358,6 +3359,52 @@ void HandleHttpRequestBlinxRelay(void)
   if (whatToDo < 0 || whatToDo > 4) { return; };
   
   ExecuteCommandPower(device, whatToDo, SRC_IGNORE);
+
+  WSContentBegin(200, CT_HTML);
+  WSContentSend_P(PSTR("Donne")); 
+  WSContentEnd();
+
+  return;
+}
+
+
+void HandleHttpRequestBlinxDisplay(void)
+{
+  char svalue[32];                   // Command and number parameter
+
+  if(Webserver->hasArg(F("DisplayMode"))){
+    String DisplayModeString = Webserver->arg(F("DisplayMode"));
+    int DisplayMode = std::stoi(DisplayModeString.c_str());
+    if (DisplayMode < 0 || DisplayMode > 5){ return; }
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplayMode %d"), DisplayMode);
+    ExecuteWebCommand(svalue);
+  }
+  if(Webserver->hasArg(F("DisplayDimmer"))){
+    String DisplayDimmerString = Webserver->arg(F("DisplayDimmer"));
+    int DisplayDimmer = std::stoi(DisplayDimmerString.c_str());
+    if (DisplayDimmer < 0 || DisplayDimmer > 100){ return; }
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplayDimmer %d"), DisplayDimmer);
+    ExecuteWebCommand(svalue);
+  }
+  if(Webserver->hasArg(F("DisplaySize"))){
+    String DisplaySizeString = Webserver->arg(F("DisplaySize"));
+    int DisplaySize = std::stoi(DisplaySizeString.c_str());
+    if (DisplaySize < 1 || DisplaySize > 4){ return; }
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplaySize %d"), DisplaySize);
+    ExecuteWebCommand(svalue);
+  }
+  if(Webserver->hasArg(F("DisplayRotate"))){
+    String DisplayRotateString = Webserver->arg(F("DisplayRotate"));
+    int DisplayRotate = std::stoi(DisplayRotateString.c_str());
+    if (DisplayRotate < 0 || DisplayRotate > 3){ return; }
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplayRotate %d"), DisplayRotate);
+    ExecuteWebCommand(svalue);
+  }
+  if(Webserver->hasArg(F("DisplayText"))){
+    String DisplayTextString = Webserver->arg(F("DisplayText"));
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplayText %s"), DisplayText);
+    ExecuteWebCommand(svalue);
+  }
 
   WSContentBegin(200, CT_HTML);
   WSContentSend_P(PSTR("Donne")); 
