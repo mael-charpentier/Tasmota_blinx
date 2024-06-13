@@ -3219,7 +3219,19 @@ void HandleHttpCommand(void)
 
 void HandleHttpRequestBlinxGet(void)
 {
+  bool codeboot = false;
+  if (Webserver->args() > 0){
+    if(Webserver->argName(0)[0] == '?'){
+      codeboot = true;
+    }
+  } else{
+    return;
+  }
+
   String time_ask = Webserver->arg(F("time"));
+  if(time_ask == ""){
+    time_ask = Webserver->arg(F("?time"));
+  }
 
   uint32_t function, size_buffer;
   if (time_ask == "50ms") {
@@ -3244,11 +3256,16 @@ void HandleHttpRequestBlinxGet(void)
     return;
   }
 
-
-  WSContentBegin(200, CT_HTML); // to get csv : CT_APP_CSV
-
-  if(Webserver->hasArg(F("sensor"))){
-    String sensor_ask = Webserver->arg(F("sensor"));
+  if(!codeboot){
+    WSContentBegin(200, CT_HTML); // to get csv : CT_APP_CSV
+    WSContentFlush();             // Flush chunk buffer (normalyy there will be nothing, because we didn't use it)
+  }
+  
+  String sensor_ask = Webserver->arg(F("sensor"));
+  if(sensor_ask == ""){
+    sensor_ask = Webserver->arg(F("?sensor"));
+  }
+  if(sensor_ask != ""){
     
     String currentArg;
     std::vector<String> vector_sensor_ask;
@@ -3266,32 +3283,53 @@ void HandleHttpRequestBlinxGet(void)
       //blinx_getsensor(function, currentArg);
     }
 
+    if(codeboot){
+      int size_image = 4; // for the time
+      for (String &name_sensor : vector_sensor_ask){
+        size_image += blinxFindSensor(name_sensor, name_sensor.length(), FUNC_WEB_SENSOR_BLINX_SIZE_NAME, 0) + 1; // +1 for the ,
+        size_image += size_buffer * (blinxFindSensor(name_sensor, name_sensor.length(), FUNC_WEB_SENSOR_BLINX_SIZE_DATA, 0)+1); // +1 for the ,
+      }
+      blinx_encapsulation_data_begin(size_image);
+    }
+
     for (uint32_t i = 0; i < size_buffer+1; i++){
       if (i == 0){
-        WSContentSend_P(PSTR("Time"));
+        blinx_send_data_sensor(false, PSTR("Time"));
       } else{
-        WSContentSend_P(PSTR("0"));
+        blinx_send_data_sensor(false, PSTR("0"));
       }
 
-      for (auto &name_sensor : vector_sensor_ask){
-        blinx_getsensor(function, name_sensor, i);
+      for (String &name_sensor : vector_sensor_ask){
+        blinxFindSensor(name_sensor, name_sensor.length(), function, i);
       }
-      WSContentSend_P(PSTR("\n"));
+      blinx_send_data_sensor(false, PSTR("\n"));
     }
     
   } else{
+
+
+    if(codeboot){
+      int size_image = 4; // for the time
+      size_image += blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_SIZE_NAME, 0);
+      size_image += size_buffer * blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_SIZE_DATA, 0);
+      blinx_encapsulation_data_begin(size_image);
+    }
     for (uint32_t i = 0; i < size_buffer+1; i++){
       if (i == 0){
-        WSContentSend_P(PSTR("Time"));
+        blinx_send_data_sensor(false, PSTR("Time"));
       } else{
-        WSContentSend_P(PSTR("0"));
+        blinx_send_data_sensor(false, PSTR("0"));
       }
-      XsnsXdrvCall(function, i);
-      WSContentSend_P(PSTR("\n"));
+      blinxFindSensorAll(function, i);
+      blinx_send_data_sensor(false, PSTR("\n"));
     }
   }
 
-  WSContentEnd();
+  if(codeboot){
+    blinx_encapsulation_data_end();
+  }else {
+    WSContentEnd();
+  }
 
   return;
 }
