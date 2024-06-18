@@ -3499,7 +3499,6 @@ void HandleHttpRequestBlinxRelay(void)
   }
 
   int device;
-
   if(deviceString == "Port1A"){
     device = 5;
   } else if(deviceString == "Port1B"){
@@ -3512,11 +3511,19 @@ void HandleHttpRequestBlinxRelay(void)
     return;
   }
 
-  if (device < 1) { return; };
 
-  int whatToDo = std::stoi(whatToDoString.c_str());
-  
-  if (whatToDo < 0 || whatToDo > 4) { return; };
+  int whatToDo;
+  if (whatToDoString == "off"){
+    whatToDo = 0;
+  } else if (whatToDoString == "on"){
+    whatToDo = 1;
+  } else if (whatToDoString == "toggle"){
+    whatToDo = 2;
+  } else if (whatToDoString == "blink"){
+    whatToDo = 3;
+  } else{
+    return;
+  }
   
   ExecuteCommandPower(device, whatToDo, SRC_IGNORE);
 
