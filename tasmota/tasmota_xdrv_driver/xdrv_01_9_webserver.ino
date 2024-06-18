@@ -3286,8 +3286,17 @@ void HandleHttpRequestBlinxGet(void)
   }
 
   String time_ask = Webserver->arg(F("time"));
-  if(time_ask == ""){
-    time_ask = Webserver->arg(F("?time"));
+  String sensor_ask = Webserver->arg(F("sensor"));
+  String contentBase64 = Webserver->arg(F("content"));
+  if(contentBase64 != ""){
+    std::vector<StringArray2> elements = decodeContentlinx(contentBase64, 2);
+    for(auto element : elements){
+      if (element[0] == "time"){
+        time_ask = element[1];
+      } else if (element[0] == "sensor"){
+        sensor_ask = element[1];
+      }
+    }
   }
 
   uint32_t function, size_buffer;
@@ -3318,10 +3327,6 @@ void HandleHttpRequestBlinxGet(void)
     WSContentFlush();             // Flush chunk buffer (normalyy there will be nothing, because we didn't use it)
   }
   
-  String sensor_ask = Webserver->arg(F("sensor"));
-  if(sensor_ask == ""){
-    sensor_ask = Webserver->arg(F("?sensor"));
-  }
   if(sensor_ask != ""){
     
     String currentArg;
