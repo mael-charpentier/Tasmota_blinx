@@ -792,7 +792,7 @@ void WSContentBegin(int code, int ctype) {
 }
 
 void _WSContentSend(const char* content, size_t size) {  // Lowest level sendContent for all core versions
-  AddLog(LOG_LEVEL_INFO, PSTR("data send [%s]"), content);
+  //AddLog(LOG_LEVEL_INFO, PSTR("data send [%s]"), content);
 
   Webserver->sendContent(content, size);
 
@@ -3214,7 +3214,30 @@ void HandleHttpCommand(void)
 
 /*-------------------------------------------------------------------------------------------*/
 
+using StringArray2 = std::array<String, 2>;
 
+
+String base64_decode_test(String in) { // function from : https://stackoverflow.com/questions/180947/base64-decode-snippet-in-c
+    String out;
+
+    std::vector<int> T(256,-1);
+    for (int i=0; i<64; i++) T["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[i]] = i;
+
+    int val=0, valb=-8;
+    for (unsigned char c : in) {
+        if (T[c] == -1) break;
+        val = (val << 6) + T[c];
+        valb += 6;
+        if (valb >= 0) {
+            char t = char((val>>valb)&0xFF);
+            String tt = String(t);
+            out += tt;
+            valb -= 8;
+        }
+    }
+
+    return out;
+}
 
 
 void HandleHttpRequestBlinxGet(void)
