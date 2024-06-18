@@ -3281,12 +3281,8 @@ std::vector<StringArray2> decodeContentlinx(String content, int numberArg){
 void HandleHttpRequestBlinxGet(void)
 {
   bool codeboot = false;
-  if (Webserver->args() > 0){
-    if(Webserver->argName(0)[0] == '?'){
-      codeboot = true;
-    }
-  } else{
-    return;
+  if (Webserver->hasArg("?seqnum")){
+    codeboot = true;
   }
 
   String time_ask = Webserver->arg(F("time"));
