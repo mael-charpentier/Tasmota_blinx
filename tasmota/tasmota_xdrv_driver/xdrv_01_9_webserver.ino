@@ -3240,6 +3240,44 @@ String base64_decode_test(String in) { // function from : https://stackoverflow.
 }
 
 
+std::vector<StringArray2> decodeContentlinx(String content, int numberArg){
+    String decodedContent = base64_decode_test(content); // Decode base64
+    // Splitting the decoded content into key-value pairs
+    std::vector<StringArray2> keyValuePairs;
+    int start = 0;
+    bool stop = false;
+    for (int i = 0; i < numberArg; i++) {
+      int separatorIndex = decodedContent.indexOf("&", start); // Find the position of '&'
+      String key = "";
+      String value = "";
+      String temp = "";
+      if (separatorIndex == -1) {
+        temp = decodedContent.substring(start);
+        stop = true;
+      } else {
+        temp = decodedContent.substring(start, separatorIndex);
+        start = separatorIndex + 1; // Move start index to the next character after '&'
+      }
+      separatorIndex = temp.indexOf("=");
+      if (separatorIndex == -1) {
+        key = temp;
+      } else {
+        key = temp.substring(0, separatorIndex);
+        if(separatorIndex != temp.length()){
+          value = temp.substring(separatorIndex+1);
+        }
+      }
+      StringArray2 t = {key, value};
+      keyValuePairs.push_back(t);
+
+      if (stop) {
+        break;
+      }
+    }
+
+    return keyValuePairs;
+}
+
 void HandleHttpRequestBlinxGet(void)
 {
   bool codeboot = false;
