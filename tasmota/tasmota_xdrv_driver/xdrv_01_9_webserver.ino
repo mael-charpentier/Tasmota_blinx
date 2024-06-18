@@ -584,7 +584,6 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
   { "in", HTTP_ANY, HandleInformation },
 #endif  // Not FIRMWARE_MINIMAL_ONLY
 #ifdef BLINX
-  { "bg", HTTP_ANY, HandleHttpRequestBlinxGet },
   { "bc", HTTP_ANY, HandleHttpRequestBlinxConfigAnalog }, // config analog port, using ModuleSaveSettings
   { "br", HTTP_ANY, HandleHttpRequestBlinxRelay }, // for the relay, led, ...
   { "bd", HTTP_ANY, HandleHttpRequestBlinxDisplay }, // for display
@@ -3286,15 +3285,12 @@ void HandleHttpRequestBlinxGet(void)
   }
 
   String time_ask = Webserver->arg(F("time"));
-  String sensor_ask = Webserver->arg(F("sensor"));
   String contentBase64 = Webserver->arg(F("content"));
   if(contentBase64 != ""){
-    std::vector<StringArray2> elements = decodeContentlinx(contentBase64, 2);
+    std::vector<StringArray2> elements = decodeContentlinx(contentBase64, 1);
     for(auto element : elements){
       if (element[0] == "time"){
         time_ask = element[1];
-      } else if (element[0] == "sensor"){
-        sensor_ask = element[1];
       }
     }
   }
@@ -3327,24 +3323,28 @@ void HandleHttpRequestBlinxGet(void)
     WSContentFlush();             // Flush chunk buffer (normalyy there will be nothing, because we didn't use it)
   }
   
-  if(sensor_ask != ""){
     
-    String currentArg;
-    std::vector<String> vector_sensor_ask;
-    for (char c : sensor_ask) {
-        if (c != ',') {
-            currentArg += c;
-        } else {
-            vector_sensor_ask.push_back(currentArg);
-            //blinx_getsensor(function, currentArg);
-            currentArg = "";
-        }
-    }
-    if (currentArg != ""){
-      vector_sensor_ask.push_back(currentArg);
-      //blinx_getsensor(function, currentArg);
-    }
+  String path = Webserver->uri();
+  String currentArg;
+  std::vector<String> vector_sensor_ask;
+  for (char c : path) {
+      if (c == '.') {
+        break;
+      } else if (c == '/') {
+      } else if (c != ',') {
+          currentArg += c;
+      } else {
+          vector_sensor_ask.push_back(currentArg);
+          //blinx_getsensor(function, currentArg);
+          currentArg = "";
+      }
+  }
+  if (currentArg != ""){
+    vector_sensor_ask.push_back(currentArg);
+    //blinx_getsensor(function, currentArg);
+  }
 
+  if(vector_sensor_ask.size() != 0){
     if(codeboot){
       int size_image = 4; // for the time
       for (String &name_sensor : vector_sensor_ask){
@@ -3832,6 +3832,13 @@ void HandleNotFound(void)
 #ifndef NO_CAPTIVE_PORTAL
   if (CaptivePortal()) { return; }  // If captive portal redirect instead of displaying the error page.
 #endif  // NO_CAPTIVE_PORTAL
+
+#ifdef BLINX
+  String path = Webserver->uri();
+  if(path.endsWith(F(".csv"))){
+    HandleHttpRequestBlinxGet();
+  }
+#endif // BLINX
 
 #ifdef USE_EMULATION
 #ifdef USE_EMULATION_HUE
