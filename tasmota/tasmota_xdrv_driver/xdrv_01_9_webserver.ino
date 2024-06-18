@@ -3703,19 +3703,19 @@ void HandleHttpRequestBlinxPWM(void)
   char tmp[8];                       // WebGetArg numbers only
 
   if (indexPWM != "") {
-    int index = std::stoi(indexPWM);
+    int index = std::stoi(indexPWM.c_str());
 
     if (freqPWM != "") {
       int32_t pin = Pin(GPIO_PWM1, index);
-      analogWriteFreq(std::stoi(freqPWM), pin);
+      analogWriteFreq(std::stoi(freqPWM.c_str()), pin);
     }
 
     if (valuePWM != "") {
-      TasmotaGlobal.pwm_value[index] = std::stoi(valuePWM);
+      TasmotaGlobal.pwm_value[index] = std::stoi(valuePWM.c_str());
     }
 
     if (phasePWM != "") {
-      TasmotaGlobal.pwm_phase[index] = std::stoi(phasePWM);
+      TasmotaGlobal.pwm_phase[index] = std::stoi(phasePWM.c_str());
     }
 
     PwmApplyGPIO(false);
