@@ -214,6 +214,13 @@ struct {
   bool canShow = true;
   uint32_t timeDisplayDmmer = millis() + 600000;
   bool encapsulation = false;
+  uint32_t encapsulation_a = 0;
+  uint32_t encapsulation_b = 0;
+  uint32_t encapsulation_size = 0;
+  uint32_t encapsulation_size_padding = 0;
+  uint32_t encapsulation_size_div3 = 0;
+  uint32_t encapsulation_size_nbytes = 0;
+  uint32_t encapsulation_crc = 0;
 
   void updateTime(uint8_t stop){
     uint32_t new_time =  millis(); // Rtc.millis();, rtc isn't define here, we will need to change the location of this function
@@ -226,6 +233,22 @@ struct {
     return time[ind] + millis_second * ( - offset + index );
   }
 
+  char* get_int(int value) {
+    char* chunk = new char[4];
+    chunk[0] = char((value >> 24) & 0xFF);
+    chunk[1] = char((value >> 16) & 0xFF);
+    chunk[2] = char((value >> 8) & 0xFF);
+    chunk[3] = char((value) & 0xFF);
+    return chunk;
+  }
+
+  char* get_int_short(int value) {
+    char* chunk = new char[2];
+    chunk[0] = char((value) & 0xFF);
+    chunk[1] = char((value >> 8) & 0xFF);
+    return chunk;
+  }
+  
 } infoConfigBlinx;
 
 #endif // BLINX

@@ -184,7 +184,6 @@ void Sht3xGeneral(uint8_t ind) {
   }
 
   for (uint32_t i = 0; i < sht3x_count; i++) {
-    if(sht3x_count == MAX_NB_SENSORS){ break; }
     for (uint8_t y = 0; y < 2; y++){
       if (bufferSensor_Sht3x[y][i] == nullptr) {
         bufferSensor_Sht3x[y][i] = initBufferSensor(5);
@@ -201,12 +200,12 @@ void Sht3xGeneral(uint8_t ind) {
 char types_blinx_sht3x[11];
 
 void sendFunction_sht3x_tem(uint16_t val){
-    WSContentSend_Temp(types_blinx_sht3x, val);
+    blinx_send_data_sensor(true, HTTP_SNS_F_TEMP, types_blinx_sht3x, Settings->flag2.temperature_resolution, &val, TempUnit());
 }
 void sendFunction_sht3x_hum(uint16_t val){
     char parameter[FLOATSZ];
     dtostrfd(val, Settings->flag2.humidity_resolution, parameter);
-    WSContentSend_PD(HTTP_SNS_HUM, types_blinx_sht3x, parameter);
+    blinx_send_data_sensor(true, HTTP_SNS_HUM, types_blinx_sht3x, parameter);
 }
 
 void Sht3xShow_blinx(uint8_t temp, uint8_t ind, uint32_t index_csv) {
@@ -229,20 +228,18 @@ void Sht3xShow_blinx(uint8_t temp, uint8_t ind, uint32_t index_csv) {
   if (index_csv == 0){
     char types_blinx_sht3x[11];
     for (uint32_t i = 0; i < sht3x_count; i++) {
-      if(sht3x_count == MAX_NB_SENSORS){ break; }
       if (bufferSensor_Sht3x[temp_humi][i] == nullptr) { continue; }
 
       strlcpy(types_blinx_sht3x, sht3x_sensors[i].types, sizeof(types_blinx_sht3x));
 
-      WSContentSend_P(PSTR(",sht3x_%s_%s"), name, types_blinx_sht3x);
+      blinx_send_data_sensor(false, PSTR(",sht3x_%s_%s"), name, types_blinx_sht3x);
     }
   } else{
     for (uint32_t i = 0; i < sht3x_count; i++) {
-      if(sht3x_count == MAX_NB_SENSORS){ break; }
       if (bufferSensor_Sht3x[temp_humi][i] == nullptr) { continue; }
 
 
-      WSContentSend_P(PSTR(","));
+      blinx_send_data_sensor(false, PSTR(","));
       if (temp_humi == 0){
         bufferSensor_Sht3x[temp_humi][i]->buffer[ind].getData(index_csv, &sendFunction_sht3x_tem);
       } else {
@@ -318,16 +315,28 @@ bool Xsns14(uint32_t function) {
 }
 
 #ifdef BLINX
-bool Xsns14(uint32_t function, uint32_t index_csv, uint32_t phantom = 0) {
+
+int Xsns14_size_data(uint32_t phantom = 0){ // TODO number not true
+  return 10;
+}
+
+int Xsns14_size_name(uint32_t phantom = 0){ // TODO number not true
+  return 10;
+}
+
+int Xsns14(uint32_t function, uint32_t index_csv, uint32_t phantom = 0) {
   if (!I2cEnabled(XI2C_15)) { return false; }
 
-  bool result = false;
 
   if (FUNC_INIT == function) {
     Sht3xDetect();
   }
   else if (sht3x_count) {
     switch (function) {
+        case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
+          return Xsns14_size_data(phantom);
+        case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
+          return Xsns14_size_name(phantom);
         case FUNC_WEB_SENSOR_BLINX_1s:
           Sht3xShow_blinx(phantom, 0, index_csv);
           break;
@@ -345,8 +354,9 @@ bool Xsns14(uint32_t function, uint32_t index_csv, uint32_t phantom = 0) {
           break;
     }
   }
-  return result;
+  return -1;
 }
+
 #endif  // BLINX
 
 #endif  // USE_SHT3X
