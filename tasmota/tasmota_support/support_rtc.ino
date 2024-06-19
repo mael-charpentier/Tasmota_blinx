@@ -256,6 +256,10 @@ uint32_t RtcMillis(void) {
   return (millis() - Rtc.millis) % 1000;
 }
 
+uint32_t RtcMillisBrut(void) {
+  return Rtc.millis;
+}
+
 void BreakNanoTime(uint32_t time_input, uint32_t time_nanos, TIME_T &tm) {
 // break the given time_input into time components
 // this is a more compact version of the C library localtime function

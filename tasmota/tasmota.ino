@@ -227,8 +227,8 @@ struct {
   uint32_t encapsulation_size_nbytes = 0;
   uint32_t encapsulation_crc = 0;
 
-  void updateTime(uint8_t stop){
-    uint32_t new_time =  millis(); // Rtc.millis();, rtc isn't define here, we will need to change the location of this function
+  void updateTime(uint8_t stop, uint32_t new_time){
+    // uint32_t new_time =  millis(); // Rtc.millis();, rtc isn't define here, we will need to change the location of this function
     for (uint8_t i = 0; i < stop; i ++){
       time[i] = new_time;
     }
@@ -1016,7 +1016,7 @@ void Scheduler(void) {
   static uint32_t state_1hour_before = 0;                // State hour timer
   
   if (TimeReached(state_1hour_before)) {
-    infoConfigBlinx.updateTime(6);
+    infoConfigBlinx.updateTime(6, RtcMillisBrut());//Rtc.millis);
 
     SetNextTimeInterval(state_1hour_before, 3600000);
     SetNextTimeInterval(state_10minute_before, 600000);
@@ -1027,7 +1027,7 @@ void Scheduler(void) {
     XsnsCall(FUNC_PREP_DATA);
     whatTime = FUNC_EVERY_HOUR;
   } else if (TimeReached(state_10minute_before)) {
-    infoConfigBlinx.updateTime(5);
+    infoConfigBlinx.updateTime(5, RtcMillisBrut());//Rtc.millis);
 
     SetNextTimeInterval(state_1minute_before, 60000);
     SetNextTimeInterval(state_10second_before, 10000);
@@ -1036,7 +1036,7 @@ void Scheduler(void) {
     XsnsCall(FUNC_PREP_DATA);
     whatTime = FUNC_EVERY_10_MINUTE;
   } else if (TimeReached(state_1minute_before)) {
-    infoConfigBlinx.updateTime(4);
+    infoConfigBlinx.updateTime(4, RtcMillisBrut());//Rtc.millis);
 
     SetNextTimeInterval(state_1minute_before, 60000);
     SetNextTimeInterval(state_10second_before, 10000);
@@ -1045,7 +1045,7 @@ void Scheduler(void) {
     XsnsCall(FUNC_PREP_DATA);
     whatTime = FUNC_EVERY_MINUTE;
   } else if (TimeReached(state_10second_before)) {
-    infoConfigBlinx.updateTime(3);
+    infoConfigBlinx.updateTime(3, RtcMillisBrut());//Rtc.millis);
 
     SetNextTimeInterval(state_10second_before, 10000);
     SetNextTimeInterval(state_second_before, 1000);
@@ -1053,14 +1053,14 @@ void Scheduler(void) {
     XsnsCall(FUNC_PREP_DATA);
     whatTime = FUNC_EVERY_10_SECOND;
   } else if (TimeReached(state_second_before)) {
-    infoConfigBlinx.updateTime(2);
+    infoConfigBlinx.updateTime(2, RtcMillisBrut());//Rtc.millis);
 
     SetNextTimeInterval(state_second_before, 1000);
     SetNextTimeInterval(state_50msecond_before, 50);
     XsnsCall(FUNC_PREP_DATA);
     whatTime = FUNC_EVERY_SECOND;
   } else if (TimeReached(state_50msecond_before)) {
-    infoConfigBlinx.updateTime(1);
+    infoConfigBlinx.updateTime(1, RtcMillisBrut());//Rtc.millis);
 
     SetNextTimeInterval(state_50msecond_before, 50);
     XsnsCall(FUNC_PREP_DATA);
