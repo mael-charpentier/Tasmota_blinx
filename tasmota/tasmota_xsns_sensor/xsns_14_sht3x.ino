@@ -367,11 +367,15 @@ bool Xsns14(uint32_t function) {
 #ifdef BLINX
 
 int Xsns14_size_data(uint32_t phantom = 0){ // TODO number not true
-  return 10;
+  if(phantom = 1){
+    return 7;
+  } else{
+    return 5;
+  }
 }
 
-int Xsns14_size_name(uint32_t phantom = 0){ // TODO number not true
-  return 10;
+int Xsns14_size_name(uint32_t phantom = 0){
+    return 16;
 }
 
 int Xsns14(uint32_t function, uint32_t index_csv, uint32_t phantom = 0) {
