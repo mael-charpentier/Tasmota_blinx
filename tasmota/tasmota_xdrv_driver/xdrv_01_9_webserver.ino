@@ -589,6 +589,7 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
   { "bd", HTTP_ANY, HandleHttpRequestBlinxDisplay }, // for display
   { "bl", HTTP_ANY, HandleHttpRequestBlinxLight }, // for light
   { "bb", HTTP_ANY, HandleHttpRequestBlinxPWM }, // for motor, buzzer
+  { "bi", HTTP_ANY, HandleHttpRequestBlinxInfo }, // to get info
 #endif // BLINX
 };
 
@@ -3463,6 +3464,7 @@ void HandleHttpRequestBlinxConfigAnalog(void)
     int size_image = 4; // for the time
     blinx_encapsulation_data_begin(size_image);
     blinx_send_data_sensor(false, PSTR("Done"));
+    blinx_encapsulation_data_end();
   } else{
     WSContentBegin(200, CT_HTML);
     WSContentEnd();
@@ -3524,6 +3526,7 @@ void HandleHttpRequestBlinxRelay(void)
     int size_image = 4; // for the time
     blinx_encapsulation_data_begin(size_image);
     blinx_send_data_sensor(false, PSTR("Done"));
+    blinx_encapsulation_data_end();
   } else{
     WSContentBegin(200, CT_HTML);
     WSContentEnd();
@@ -3599,6 +3602,7 @@ void HandleHttpRequestBlinxDisplay(void)
     int size_image = 4; // for the time
     blinx_encapsulation_data_begin(size_image);
     blinx_send_data_sensor(false, PSTR("Done"));
+    blinx_encapsulation_data_end();
   } else{
     WSContentBegin(200, CT_HTML);
     WSContentEnd();
@@ -3662,6 +3666,7 @@ void HandleHttpRequestBlinxLight(void)
     int size_image = 4; // for the time
     blinx_encapsulation_data_begin(size_image);
     blinx_send_data_sensor(false, PSTR("Done"));
+    blinx_encapsulation_data_end();
   } else{
     WSContentBegin(200, CT_HTML);
     WSContentEnd();
@@ -3724,10 +3729,87 @@ void HandleHttpRequestBlinxPWM(void)
       int size_image = 4; // for the time
       blinx_encapsulation_data_begin(size_image);
       blinx_send_data_sensor(false, PSTR("Done"));
+      blinx_encapsulation_data_end();
     } else{
       WSContentBegin(200, CT_HTML);
       WSContentEnd();
     }
+  }
+
+  return;
+}
+
+void HandleHttpRequestBlinxInfo(void)
+{
+  bool codeboot = false;
+  if (Webserver->hasArg("?seqnum")){
+    codeboot = true;
+  }
+
+
+
+  if(codeboot){
+    // we don't know the size
+  } else{
+    WSContentBegin(200, CT_HTML);
+
+    blinx_send_data_sensor(false, PSTR("{"));
+    
+    // for input sensor : analog + i2c (xsns), the function don't have any importance, it is the index 0
+    blinx_send_data_sensor(false, PSTR("\"sensor\":\""));
+    blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_1s, 0);
+    blinx_send_data_sensor(false, PSTR("\""));
+
+    // for the on off
+    if (TasmotaGlobal.devices_present) {
+        blinx_send_data_sensor(false, PSTR(",\"DEVICE_on_off\":["));
+        for (uint32_t idx = 1; idx <= TasmotaGlobal.devices_present; idx++) {
+          blinx_send_data_sensor(false, PSTR("\"DEVICE_%d\""),idx);
+
+          if (idx < TasmotaGlobal.devices_present){
+            blinx_send_data_sensor(false, PSTR(","));
+          }
+        }
+        blinx_send_data_sensor(false, PSTR("]"));
+    }
+    
+
+    // for the pwm
+    uint32_t number_pwm = 0;
+    for (uint32_t i = 0; i < MAX_PWMS; i++) {
+      if (PinUsed(GPIO_PWM1, i)) {
+        number_pwm ++;
+      }
+    }
+    if (number_pwm > 0){
+      uint32_t see_pwm = 0;
+      
+      blinx_send_data_sensor(false, PSTR(",\"PWM\":["));
+      for (uint32_t i = 0; i < MAX_PWMS; i++) {
+        if (PinUsed(GPIO_PWM1, i)) {
+          see_pwm ++;
+          int32_t pin = Pin(GPIO_PWM1, i);
+          int32_t chan = analogGetChannel2(pin);
+
+          blinx_send_data_sensor(false, PSTR("\"PWM_%d\""), i);
+
+          if (see_pwm < number_pwm){
+            blinx_send_data_sensor(false, PSTR(","));
+          }
+        }
+      }
+      blinx_send_data_sensor(false, PSTR("]"));
+    }
+    
+    // Info wifi
+    blinx_send_data_sensor(false, PSTR(",\"" D_CMND_HOSTNAME "\":\"%s\",\""
+                          D_CMND_IPADDRESS "\":\"%_I\",\""
+                          D_JSON_MAC "\":\"%s\", \"Version\" : \"%s\"}"),
+                          TasmotaGlobal.hostname,
+                          (uint32_t)WiFi.localIP(),
+                          WiFi.macAddress().c_str(), TasmotaGlobal.version);
+
+    WSContentEnd();
   }
 
   return;
