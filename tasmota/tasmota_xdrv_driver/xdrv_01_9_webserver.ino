@@ -3298,24 +3298,37 @@ void HandleHttpRequestBlinxGet(void)
   }
 
   uint32_t function, size_buffer;
+  timeBlinx infoTime;
   if (time_ask == "50ms") {
     function = FUNC_WEB_SENSOR_BLINX_50Ms;
     size_buffer = SIZE_BUFFER_50MS;
+    infoTime.millis_second = 50;
+    infoTime.ind = 0;
   } else if (time_ask == "1s") {
     function = FUNC_WEB_SENSOR_BLINX_1s;
     size_buffer = SIZE_BUFFER_1S;
+    infoTime.millis_second = 1000;
+    infoTime.ind = 1;
   } else if (time_ask == "10s") {
     function = FUNC_WEB_SENSOR_BLINX_10s;
     size_buffer = SIZE_BUFFER_10S;
+    infoTime.millis_second = 1000 * 10;
+    infoTime.ind = 2;
   } else if (time_ask == "1m") {
     function = FUNC_WEB_SENSOR_BLINX_1m;
     size_buffer = SIZE_BUFFER_1M;
+    infoTime.millis_second = 1000 * 60;
+    infoTime.ind = 3;
   } else if (time_ask == "10m") {
     function = FUNC_WEB_SENSOR_BLINX_10m;
     size_buffer = SIZE_BUFFER_10M;
+    infoTime.millis_second = 1000 * 60 * 10;
+    infoTime.ind = 4;
   } else if (time_ask == "1h") {
     function = FUNC_WEB_SENSOR_BLINX_1h;
     size_buffer = SIZE_BUFFER_1H;
+    infoTime.millis_second = 1000 * 60 * 60;
+    infoTime.ind = 5;
   } else {
     return;
   }
@@ -3360,7 +3373,7 @@ void HandleHttpRequestBlinxGet(void)
       if (i == 0){
         blinx_send_data_sensor(false, PSTR("Time"));
       } else{
-        blinx_send_data_sensor(false, PSTR("0"));
+        blinx_send_data_sensor(false, PSTR("%d"), getTime(infoTime, i));
       }
 
       for (String &name_sensor : vector_sensor_ask){
