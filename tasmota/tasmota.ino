@@ -125,6 +125,7 @@
 
 using FunctionType = void (*)(uint16_t);
 
+// the buffe to store the data of the sensor
 struct bufferTime {
   uint16_t* buffer = nullptr;
   uint8_t index = 0;
@@ -132,7 +133,7 @@ struct bufferTime {
   uint8_t diff;
 
 
-  bufferTime(uint8_t _size, uint8_t _diff) : diff(_diff), size(_size){
+  bufferTime(uint8_t _size, uint8_t _diff) : diff(_diff), size(_size){ // init function
     buffer = new uint16_t[size];
     for (int i = 0; i < size; i++){
       buffer[i] = 0;
@@ -159,6 +160,7 @@ struct bufferTime {
   }
 };
 
+// function to store the different buffer for each time
 struct bufferSensor {
   bufferTime* buffer;
   uint8_t size;
@@ -208,6 +210,7 @@ struct bufferSensor {
   }
 };
 
+// struct to store information for blinx
 struct {
   uint32_t time[6] = {0,0,0,0,0,0};
   bool displayWifi = true;
@@ -1001,7 +1004,8 @@ void Scheduler(void) {
 
 
   #ifdef BLINX
-
+  // what time do we need to look
+  
   static uint16_t whatTime = -1;
 
   static uint32_t state_50msecond_before = 0;             // State 50msecond timer
@@ -1109,6 +1113,7 @@ void Scheduler(void) {
 
 
   #ifdef BLINX
+  // get the data
     if (whatTime != -1){
       XsnsCall(whatTime);
       whatTime = -1;

@@ -548,6 +548,7 @@ void ButtonHandler(void) {
                   if (!Settings->flag3.mqtt_buttons) {       // SetOption73 - Detach buttons from relays and enable MQTT action state for multipress
                     if (Button.press_counter[button_index] == 1) {  // By default first press always send a TOGGLE (2)
                       #ifdef BLINX
+                        // if we click on a button, when we are in the mode 6, then we wake up the display for 10min or we put it to sleep
                         if ((button_index == 2 || button_index == 3)){
                           if((Settings->display_mode == 6)){
                             DisplayClear();

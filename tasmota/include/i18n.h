@@ -253,6 +253,7 @@
 #define D_RSLT_COMMAND "COMMAND"
 
 #ifdef BLINX
+// the different sensor that we want to show in the display (in addition of the default one of tasmota)
 #define D_JSON_BLINX_ANALOG1 "A1"
 #define D_JSON_BLINX_ANALOG2 "A2"
 #define D_JSON_BLINX_ANALOG3 "A3"

@@ -1733,6 +1733,7 @@ const char kSensorQuantity[] PROGMEM =
   D_JSON_FREQUENCY ;                                                            // Hz
 
 #ifdef BLINX
+// what we want to show on the display
 const char kSensorQuantityBlinx[] PROGMEM =
   D_JSON_TEMPERATURE "|"                                                        // degrees
   D_JSON_HUMIDITY "|" D_JSON_LIGHT "|" D_JSON_NOISE "|" D_JSON_AIRQUALITY "|"   // percentage
@@ -1747,9 +1748,9 @@ const char kSensorQuantityBlinx[] PROGMEM =
   D_JSON_POWERUSAGE "|"                                                         // Watt
   D_JSON_CO2 "|"                                                                // ppm
   D_JSON_FREQUENCY "|"                                                          // Hz
-  D_JSON_BLINX_ANALOG1 "|" D_JSON_BLINX_ANALOG2 "|" D_JSON_BLINX_ANALOG3 "|"
-  D_JSON_BLINX_ANALOG4 "|" D_JSON_BLINX_PWM_VALUE "|"
-  D_JSON_BLINX_PWM_PHASE "|" D_JSON_BLINX_PWM_FREQ ;    // other, blinx
+  D_JSON_BLINX_ANALOG1 "|" D_JSON_BLINX_ANALOG2 "|" D_JSON_BLINX_ANALOG3 "|"    // other, blinx
+  D_JSON_BLINX_ANALOG4 "|" D_JSON_BLINX_PWM_VALUE "|"                           // other, blinx
+  D_JSON_BLINX_PWM_PHASE "|" D_JSON_BLINX_PWM_FREQ ;                            // other, blinx
 #endif // BLINX
 
 void DisplayJsonValue(const char* topic, const char* device, const char* mkey, const char* value)

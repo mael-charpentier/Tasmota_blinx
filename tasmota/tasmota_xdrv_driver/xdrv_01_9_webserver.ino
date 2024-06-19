@@ -584,6 +584,7 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
   { "in", HTTP_ANY, HandleInformation },
 #endif  // Not FIRMWARE_MINIMAL_ONLY
 #ifdef BLINX
+  // add endpoint for the web api
   { "bg", HTTP_ANY, HandleHttpRequestBlinxGet },
   { "bc", HTTP_ANY, HandleHttpRequestBlinxConfigAnalog }, // config analog port, using ModuleSaveSettings
   { "br", HTTP_ANY, HandleHttpRequestBlinxRelay }, // for the relay, led, ...
@@ -3217,7 +3218,10 @@ void HandleHttpCommand(void)
 using StringArray2 = std::array<String, 2>;
 
 
-String base64_decode_test(String in) { // function from : https://stackoverflow.com/questions/180947/base64-decode-snippet-in-c
+String base64_decode_test(String in) {
+    // function from : https://stackoverflow.com/questions/180947/base64-decode-snippet-in-c
+    // function to decode a string in base64
+    
     String out;
 
     std::vector<int> T(256,-1);
@@ -3247,10 +3251,13 @@ std::vector<StringArray2> decodeContentlinx(String content, int numberArg){
     int start = 0;
     bool stop = false;
     for (int i = 0; i < numberArg; i++) {
+      // get all the key and value of the args in the string encode in base64
       int separatorIndex = decodedContent.indexOf("&", start); // Find the position of '&'
       String key = "";
       String value = "";
       String temp = "";
+      
+      // get the arg
       if (separatorIndex == -1) {
         temp = decodedContent.substring(start);
         stop = true;
@@ -3258,6 +3265,8 @@ std::vector<StringArray2> decodeContentlinx(String content, int numberArg){
         temp = decodedContent.substring(start, separatorIndex);
         start = separatorIndex + 1; // Move start index to the next character after '&'
       }
+      
+      // get the key and value
       separatorIndex = temp.indexOf("=");
       if (separatorIndex == -1) {
         key = temp;
@@ -3267,6 +3276,7 @@ std::vector<StringArray2> decodeContentlinx(String content, int numberArg){
           value = temp.substring(separatorIndex+1);
         }
       }
+      
       StringArray2 t = {key, value};
       keyValuePairs.push_back(t);
 
@@ -3280,11 +3290,15 @@ std::vector<StringArray2> decodeContentlinx(String content, int numberArg){
 
 void HandleHttpRequestBlinxGet(void)
 {
+  // get the data of the sensor
+  
+  // request came from codeboot ? 
   bool codeboot = false;
   if (Webserver->hasArg("?seqnum")){
     codeboot = true;
   }
 
+  // get the arg
   String time_ask = Webserver->arg(F("time"));
   String sensor_ask = Webserver->arg(F("sensor"));
   String contentBase64 = Webserver->arg(F("content"));
@@ -3299,6 +3313,7 @@ void HandleHttpRequestBlinxGet(void)
     }
   }
 
+  // what time do we want ?
   uint32_t function, size_buffer;
   if (time_ask == "50ms") {
     function = FUNC_WEB_SENSOR_BLINX_50Ms;
@@ -3328,7 +3343,6 @@ void HandleHttpRequestBlinxGet(void)
   }
   
   if(sensor_ask != ""){
-    
     String currentArg;
     std::vector<String> vector_sensor_ask;
     for (char c : sensor_ask) {
@@ -3398,6 +3412,7 @@ void HandleHttpRequestBlinxGet(void)
 
 
 uint32_t name_to_id_type(String input_name){
+  // get the id from the name of the type of gpio
   char stemp[30];
   for (uint32_t i = 0; i < nitems(kGpioNiceList); i++) {
     uint32_t ridx = pgm_read_word(kGpioNiceList + i) & 0xFFE0;
@@ -3419,7 +3434,7 @@ void HandleHttpRequestBlinxConfigAnalog(void)
   TemplateGpios(&template_gp);
 
 
-  if(Webserver->hasArg(F("port1A"))){ // AO GPIO2 // sure : test for the led
+  if(Webserver->hasArg(F("port1A"))){ // AO GPIO2
     String portString = Webserver->arg(F("port1A"));
     Settings->my_gp.io[2] = name_to_id_type(portString) + 5;
   }
@@ -3612,11 +3627,13 @@ void HandleHttpRequestBlinxPWM(void)
 #include <Crc32.h>
 
 void blinx_calculate_CRC(const char* data, size_t length) {
+  // function to calculate the crc32 of the png
   infoConfigBlinx.encapsulation_crc = crc32_1byte(data, length, infoConfigBlinx.encapsulation_crc);
 }
 
 
 void blinx_encapsulation_data_begin(int size) {
+  // begin the encapsulation of the data inside the png
 
   infoConfigBlinx.encapsulation_size = size;
 
@@ -3633,7 +3650,8 @@ void blinx_encapsulation_data_begin(int size) {
 
 
   Webserver->client().flush();
-
+  
+  // send the header
   char server[32];
   snprintf_P(server, sizeof(server), PSTR("Tasmota/%s (%s)"), TasmotaGlobal.version, GetDeviceHardware().c_str());
   Webserver->sendHeader(F("Server"), server);
@@ -3650,7 +3668,6 @@ void blinx_encapsulation_data_begin(int size) {
   Web.chunk_buffer = "";
   Web.chunk_buffer_size = 0;
 
-
   //_WSContentSend("HTTP/1.1 200 OK\r\nContent-Type: image/x-png\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: ");
   //blinx_send_data_sensor(false, PSTR("%d"), infoConfigBlinx.encapsulation_size_nbytes + png_overhead);
   //_WSContentSend("\r\nConnection: Closed\r\n\r\n");
@@ -3658,6 +3675,7 @@ void blinx_encapsulation_data_begin(int size) {
   infoConfigBlinx.encapsulation = true;
   infoConfigBlinx.encapsulation_crc = 0;
 
+  // send the beginning of the png
   _WSContentSendBufferChunk("\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8);
 
   _WSContentSendBufferChunk(infoConfigBlinx.get_int(13), 4);
@@ -3682,12 +3700,16 @@ void blinx_encapsulation_data_begin(int size) {
 }
 
 void blinx_encapsulation_send_data(const char* data, size_t length) { 
+  // calculate the crc32 and send the daa
+  
   blinx_calculate_CRC(data, length);
   //_WSContentSend
   _WSContentSendBufferChunk(data, length);
 }
 
 void blinx_send_data_sensor(boolean PD, const char* formatP...) { 
+  // function to send the data inside an encapsulation or not
+
   //PD = true, equivalent WSContentSend_PD
   //PD = false, equivalent WSContentSend_P--
   va_list arg;
@@ -3718,7 +3740,8 @@ void blinx_send_data_sensor(boolean PD, const char* formatP...) {
   va_end(arg);
 }
 
-void blinx_encapsulation_send_crc() { 
+void blinx_encapsulation_send_crc() {
+  // send the result of the crc32
   _WSContentSendBufferChunk(infoConfigBlinx.get_int(infoConfigBlinx.encapsulation_crc), 4);
   infoConfigBlinx.encapsulation_crc = 0;
 }

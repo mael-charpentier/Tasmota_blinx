@@ -2,6 +2,8 @@
 
 #ifdef BLINX
 
+// prefix tree to find sensor for the name
+
 int blinxFindSensor(String input, size_t l, uint32_t function, uint32_t index_csv){
     if (l == 0) { return -1; }
     else if (input[0] == 's'){
@@ -120,6 +122,7 @@ int blinxFindSensorSHT3C_TEM(String input, size_t l, uint32_t function, uint32_t
 
 
 
+// if we want to get all the sensor
 int blinxFindSensorAll(uint32_t function, uint32_t index_csv){
    int sum = 0;
    sum += Xsns14(function, index_csv, 1) + 1;

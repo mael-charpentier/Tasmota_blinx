@@ -1,5 +1,6 @@
 #ifdef BLINX
 
+// function to init the buffe for the sensor
 bufferSensor* initBufferSensor(int size){
   bufferSensor* temp = new bufferSensor(size);
   int index = 0;
