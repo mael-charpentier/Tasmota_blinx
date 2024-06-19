@@ -3373,7 +3373,7 @@ void HandleHttpRequestBlinxGet(void)
       if (i == 0){
         blinx_send_data_sensor(false, PSTR("Time"));
       } else{
-        blinx_send_data_sensor(false, PSTR("%d"), getTime(infoTime, i));
+        blinx_send_data_sensor(false, PSTR("%d"), infoConfigBlinx.getTime(infoTime, i));
       }
 
       for (String &name_sensor : vector_sensor_ask){

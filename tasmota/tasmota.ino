@@ -208,6 +208,11 @@ struct bufferSensor {
   }
 };
 
+struct timeBlinx {
+  uint32_t millis_second;
+  uint32_t ind;
+};
+
 struct {
   uint32_t time[6] = {0,0,0,0,0,0};
   bool displayWifi = true;
@@ -250,11 +255,6 @@ struct {
   }
   
 } infoConfigBlinx;
-
-struct timeBlinx {
-  uint32_t millis_second;
-  uint32_t ind;
-};
 #endif // BLINX
 
 
