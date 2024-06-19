@@ -3366,6 +3366,7 @@ void HandleHttpRequestBlinxGet(void)
         size_image += blinxFindSensor(name_sensor, name_sensor.length(), FUNC_WEB_SENSOR_BLINX_SIZE_NAME, 0) + 1; // +1 for the ,
         size_image += size_buffer * (blinxFindSensor(name_sensor, name_sensor.length(), FUNC_WEB_SENSOR_BLINX_SIZE_DATA, 0)+1); // +1 for the ,
       }
+      size_image += size_buffer * (std::to_string(infoConfigBlinx.getTime(infoTime, 0, size_buffer)).length());
       blinx_encapsulation_data_begin(size_image);
     }
 
@@ -3388,14 +3389,14 @@ void HandleHttpRequestBlinxGet(void)
     if(codeboot){
       int size_image = 4; // for the time
       size_image += blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_SIZE_NAME, 0);
-      size_image += size_buffer * blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_SIZE_DATA, 0);
+      size_image += size_buffer * (blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_SIZE_DATA, 0) + (std::to_string(infoConfigBlinx.getTime(infoTime, 0, size_buffer)).length()));
       blinx_encapsulation_data_begin(size_image);
     }
     for (uint32_t i = 0; i < size_buffer+1; i++){
       if (i == 0){
         blinx_send_data_sensor(false, PSTR("Time"));
       } else{
-        blinx_send_data_sensor(false, PSTR("0"));
+        blinx_send_data_sensor(false, PSTR("%d"), infoConfigBlinx.getTime(infoTime, i, size_buffer));
       }
       blinxFindSensorAll(function, i);
       blinx_send_data_sensor(false, PSTR("\n"));
@@ -3460,7 +3461,7 @@ void HandleHttpRequestBlinxConfigAnalog(void)
   TemplateGpios(&template_gp);
 
 
-  if(port1AString != ""){ // AO GPIO2 // sure : test for the led
+  if(port1AString != ""){ // AO GPIO2
     Settings->my_gp.io[2] = name_to_id_type(port1AString) + 5;
   }
   if(port1BString != ""){ // AO GPIO3
