@@ -590,6 +590,7 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
   { "bl", HTTP_ANY, HandleHttpRequestBlinxLight }, // for light
   { "bb", HTTP_ANY, HandleHttpRequestBlinxPWM }, // for motor, buzzer
   { "bi", HTTP_ANY, HandleHttpRequestBlinxInfo }, // to get info
+  { "bn", HTTP_ANY, HandleHttpRequestBlinxName }, // to change name
 #endif // BLINX
 };
 
@@ -3815,6 +3816,42 @@ void HandleHttpRequestBlinxInfo(void)
   return;
 }
 
+void HandleHttpRequestBlinxName(void)
+{
+  bool codeboot = false;
+  if (Webserver->hasArg("?seqnum")){
+    codeboot = true;
+  }
+
+  String newName = Webserver->arg(F("name"));
+
+  String contentBase64 = Webserver->arg(F("content"));
+  if(contentBase64 != ""){
+    std::vector<StringArray2> elements = decodeContentlinx(contentBase64, 1);
+    for(auto element : elements){
+      if (element[0] == "name"){
+        newName = element[1];
+      }
+    }
+  }
+
+  if (newName != "") {
+
+    String cmnd = F(D_CMND_BACKLOG "0 ;" D_CMND_HOSTNAME " ");
+    cmnd += newName;
+
+    if(codeboot){
+      int size_image = 4; // for the time
+      blinx_encapsulation_data_begin(size_image);
+      blinx_send_data_sensor(false, PSTR("Done"));
+    } else{
+      WSContentBegin(200, CT_HTML);
+      WSContentEnd();
+    }
+
+    ExecuteWebCommand((char*)cmnd.c_str());
+  }
+}
 
 
 #include <Crc32.h>
