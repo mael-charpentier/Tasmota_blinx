@@ -112,6 +112,148 @@
  * Global variables
 \*********************************************************************************************/
 
+
+#ifdef BLINX
+
+// normaly define on the build
+#define SIZE_BUFFER_50MS 50
+#define SIZE_BUFFER_1S 30
+#define SIZE_BUFFER_10S 30
+#define SIZE_BUFFER_1M 30
+#define SIZE_BUFFER_10M 30
+#define SIZE_BUFFER_1H 30
+
+using FunctionType = void (*)(uint16_t);
+
+struct bufferTime {
+  uint16_t* buffer = nullptr;
+  uint8_t index = 0;
+  uint8_t size;
+  uint8_t diff;
+
+
+  bufferTime(uint8_t _size, uint8_t _diff) : diff(_diff), size(_size){
+    buffer = new uint16_t[size];
+    for (int i = 0; i < size; i++){
+      buffer[i] = 0;
+    }
+  }
+  bufferTime() {
+    diff = 0;
+    size = 0;
+  }
+
+  void save(uint16_t value){
+      buffer[index] = value;
+      index++;
+      if (index >= size) {
+          index = 0;
+      }
+  }
+
+  void getData(uint8_t ind, FunctionType func){
+      uint8_t max_ind = size;
+      uint8_t index_data = (index+ind)%max_ind;
+
+      (*func)(buffer[index_data]);
+  }
+};
+
+struct bufferSensor {
+  bufferTime* buffer;
+  uint8_t size;
+
+  bufferSensor(uint8_t _size) : buffer(nullptr), size(_size) {
+    buffer = new bufferTime[size];
+  }
+
+  void activate(uint8_t ind, uint8_t size, uint8_t diff){
+    buffer[ind] = bufferTime(size, diff);
+  }
+
+  void save(uint8_t ind){
+      if (buffer[ind-1].buffer != nullptr) {
+        uint32_t sum = 0;
+        uint8_t index = buffer[ind-1].index;
+        uint8_t indexDiff = index - buffer[ind].diff;
+
+        if (indexDiff >= 0){
+          for (uint32_t y = indexDiff; y < index; y++) {
+            sum += buffer[ind-1].buffer[y];
+          }
+        } else {
+          for (uint32_t y = 0; y < index; y++) {
+            sum += buffer[ind-1].buffer[y];
+          }
+          for (uint32_t y = (index + indexDiff); y < index; y++) {
+            sum += buffer[ind-1].buffer[y];
+          }
+        }
+        buffer[ind].save((uint16_t)(sum / buffer[ind].diff));
+      }
+  }
+
+  void mapData(uint8_t ind, FunctionType func){
+      uint8_t max_ind = buffer[ind].size;
+      uint8_t index = (buffer[ind].index+1)%max_ind;
+
+      for (uint32_t y = 0; y < max_ind; y++) {
+        (*func)(buffer[ind].buffer[index]);
+
+        index = (index+1);
+        if(index == max_ind){
+          index = 0;
+        }
+      }
+  }
+};
+
+struct {
+  uint32_t time[6] = {0,0,0,0,0,0};
+  bool displayWifi = true;
+  bool canShow = true;
+  uint32_t timeDisplayDmmer = millis() + 600000;
+  bool encapsulation = false;
+  uint32_t encapsulation_a = 0;
+  uint32_t encapsulation_b = 0;
+  uint32_t encapsulation_size = 0;
+  uint32_t encapsulation_size_padding = 0;
+  uint32_t encapsulation_size_div3 = 0;
+  uint32_t encapsulation_size_nbytes = 0;
+  uint32_t encapsulation_crc = 0;
+
+  void updateTime(uint8_t stop){
+    uint32_t new_time =  millis(); // Rtc.millis();, rtc isn't define here, we will need to change the location of this function
+    for (uint8_t i = 0; i < stop; i ++){
+      time[i] = new_time;
+    }
+  }
+
+  uint32_t getTime(uint8_t ind, uint8_t offset, uint8_t index, uint8_t millis_second){
+    return time[ind] + millis_second * ( - offset + index );
+  }
+
+  char* get_int(int value) {
+    char* chunk = new char[4];
+    chunk[0] = char((value >> 24) & 0xFF);
+    chunk[1] = char((value >> 16) & 0xFF);
+    chunk[2] = char((value >> 8) & 0xFF);
+    chunk[3] = char((value) & 0xFF);
+    return chunk;
+  }
+
+  char* get_int_short(int value) {
+    char* chunk = new char[2];
+    chunk[0] = char((value) & 0xFF);
+    chunk[1] = char((value >> 8) & 0xFF);
+    return chunk;
+  }
+  
+} infoConfigBlinx;
+
+#endif // BLINX
+
+
 const uint32_t VERSION_MARKER[] PROGMEM = { 0x5AA55AA5, 0xFFFFFFFF, 0xA55AA55A };
 
 struct WIFI {
@@ -857,6 +999,72 @@ void Scheduler(void) {
 #endif  // USE_DEVICE_GROUPS
   BacklogLoop();
 
+
+  #ifdef BLINX
+
+  static uint16_t whatTime = -1;
+
+  static uint32_t state_50msecond_before = 0;             // State 50msecond timer
+  static uint32_t state_second_before = 0;                // State second timer
+  static uint32_t state_10second_before = 0;                // State 10 second timer
+  static uint32_t state_1minute_before = 0;                // State minute timer
+  static uint32_t state_10minute_before = 0;                // State 10 minute timer
+  static uint32_t state_1hour_before = 0;                // State hour timer
+  
+  if (TimeReached(state_1hour_before)) {
+    infoConfigBlinx.updateTime(6);
+
+    SetNextTimeInterval(state_1hour_before, 3600000);
+    SetNextTimeInterval(state_10minute_before, 600000);
+    SetNextTimeInterval(state_1minute_before, 60000);
+    SetNextTimeInterval(state_10second_before, 10000);
+    SetNextTimeInterval(state_second_before, 1000);
+    SetNextTimeInterval(state_50msecond_before, 50);
+    XsnsCall(FUNC_PREP_DATA);
+    whatTime = FUNC_EVERY_HOUR;
+  } else if (TimeReached(state_10minute_before)) {
+    infoConfigBlinx.updateTime(5);
+
+    SetNextTimeInterval(state_1minute_before, 60000);
+    SetNextTimeInterval(state_10second_before, 10000);
+    SetNextTimeInterval(state_second_before, 1000);
+    SetNextTimeInterval(state_50msecond_before, 50);
+    XsnsCall(FUNC_PREP_DATA);
+    whatTime = FUNC_EVERY_10_MINUTE;
+  } else if (TimeReached(state_1minute_before)) {
+    infoConfigBlinx.updateTime(4);
+
+    SetNextTimeInterval(state_1minute_before, 60000);
+    SetNextTimeInterval(state_10second_before, 10000);
+    SetNextTimeInterval(state_second_before, 1000);
+    SetNextTimeInterval(state_50msecond_before, 50);
+    XsnsCall(FUNC_PREP_DATA);
+    whatTime = FUNC_EVERY_MINUTE;
+  } else if (TimeReached(state_10second_before)) {
+    infoConfigBlinx.updateTime(3);
+
+    SetNextTimeInterval(state_10second_before, 10000);
+    SetNextTimeInterval(state_second_before, 1000);
+    SetNextTimeInterval(state_50msecond_before, 50);
+    XsnsCall(FUNC_PREP_DATA);
+    whatTime = FUNC_EVERY_10_SECOND;
+  } else if (TimeReached(state_second_before)) {
+    infoConfigBlinx.updateTime(2);
+
+    SetNextTimeInterval(state_second_before, 1000);
+    SetNextTimeInterval(state_50msecond_before, 50);
+    XsnsCall(FUNC_PREP_DATA);
+    whatTime = FUNC_EVERY_SECOND;
+  } else if (TimeReached(state_50msecond_before)) {
+    infoConfigBlinx.updateTime(1);
+
+    SetNextTimeInterval(state_50msecond_before, 50);
+    XsnsCall(FUNC_PREP_DATA);
+    whatTime = FUNC_EVERY_50_MSECOND;
+  }
+
+  #endif // BLINX
+
   static uint32_t state_50msecond = 0;             // State 50msecond timer
   if (TimeReached(state_50msecond)) {
     SetNextTimeInterval(state_50msecond, 50);
@@ -864,7 +1072,12 @@ void Scheduler(void) {
 #ifdef ROTARY_V1
     RotaryHandler();
 #endif  // ROTARY_V1
+
+  #ifdef BLINX
+    XdrvCall(FUNC_EVERY_50_MSECOND);
+  #else
     XdrvXsnsCall(FUNC_EVERY_50_MSECOND);
+  #endif // BLINX
   }
 
   static uint32_t state_100msecond = 0;            // State 100msecond timer
@@ -886,8 +1099,21 @@ void Scheduler(void) {
     SetNextTimeInterval(state_second, 1000);
     PerformEverySecond();
     XdrvCall(FUNC_ACTIVE);
+
+  #ifdef BLINX
+    XdrvCall(FUNC_EVERY_SECOND);
+  #else
     XdrvXsnsCall(FUNC_EVERY_SECOND);
+  #endif // BLINX
   }
+
+
+  #ifdef BLINX
+    if (whatTime != -1){
+      XsnsCall(whatTime);
+      whatTime = -1;
+    }
+  #endif // BLINX
 
   if (!TasmotaGlobal.serial_local) { SerialInput(); }
 #ifdef ESP32

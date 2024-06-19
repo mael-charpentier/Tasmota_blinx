@@ -66,6 +66,8 @@
 #define USE_VL_MEDIAN
 #define USE_VL_MEDIAN_SIZE 5   // Odd number of samples median detection
 
+
+#include <algorithm>
 #include <Wire.h>
 #include "VL53L0X.h"
 
@@ -78,9 +80,12 @@ VL53L0X VL53L0X_device[VL53LXX_MAX_SENSORS];
 struct {
   uint16_t distance;
   uint16_t distance_prev;
+#ifdef BLINX
+  bufferSensor* bufferBlinx = nullptr;
+#endif // BLINX
   uint16_t buffer[5];
-  uint8_t ready = 0;
   uint8_t index;
+  uint8_t ready = 0;
 } Vl53l0x_data[VL53LXX_MAX_SENSORS];
 
 bool VL53L0X_xshut = false;
@@ -143,6 +148,55 @@ void Vl53l0Detect(void) {
     }
   }
 }
+
+
+#ifdef BLINX
+
+void Vl53l0_global(uint8_t ind) {
+  for (uint32_t i = 0; i < VL53LXX_MAX_SENSORS; i++) {
+    if (Vl53l0x_data[i].bufferBlinx == nullptr) {
+      Vl53l0x_data[i].bufferBlinx = initBufferSensor(6);
+    }
+    if (PinUsed(GPIO_VL53LXX_XSHUT1, i) || (!VL53L0X_xshut)) {
+      if (ind == 0){
+        uint16_t dist = VL53L0X_device[i].readRangeContinuousMillimeters();
+        if ((0 == dist) || (dist > 2200)) {
+            dist = 9999;
+        }
+        Vl53l0x_data[i].distance = dist;
+        Vl53l0x_data[i].bufferBlinx[ind].save(dist);
+      } else{
+        Vl53l0x_data[i].bufferBlinx->save(ind);
+      }
+    }
+    if (!VL53L0X_xshut) { break; }
+  }
+}
+
+void sendFunction_Vl53l0(uint16_t val){
+    float distance = (val == 9999) ? NAN : (float)val / 10; // cm
+    WSContentSend_P(PSTR("%1_f,"), &distance);
+}
+
+void Vl53l0Show_blinx(uint8_t ind, uint32_t index_csv) {
+  if (index_csv == 0){
+    for (uint32_t i = 0; i < VL53LXX_MAX_SENSORS; i++) {
+      if (Vl53l0x_data[i].bufferBlinx == nullptr) { continue; }
+      if (PinUsed(GPIO_VL53LXX_XSHUT1, i) || (!VL53L0X_xshut)) {
+        WSContentSend_P(PSTR(",VL53L0X_%d"), i);
+      }
+    }
+  } else{
+    for (uint32_t i = 0; i < VL53LXX_MAX_SENSORS; i++) {
+      if (Vl53l0x_data[i].bufferBlinx == nullptr) { continue; }
+      if (PinUsed(GPIO_VL53LXX_XSHUT1, i) || (!VL53L0X_xshut)) {
+        WSContentSend_P(PSTR(","));
+        Vl53l0x_data[i].bufferBlinx->buffer[ind].getData(index_csv, &sendFunction_Vl53l0);
+      }
+    }
+  }
+}
+#endif // BLINX
 
 void Vl53l0Every_250MSecond(void) {
   for (uint32_t i = 0; i < VL53LXX_MAX_SENSORS; i++) {
@@ -225,6 +279,7 @@ void Vl53l0Show(boolean json) {
 #endif  // USE_DOMOTICZ
 }
 
+
 /*********************************************************************************************\
  * Interface
 \*********************************************************************************************/
@@ -238,27 +293,79 @@ bool Xsns45(uint32_t function) {
     Vl53l0Detect();
   }
   else if (VL53L0X_detected) {
-    switch (function) {
-      case FUNC_EVERY_250_MSECOND:
-        Vl53l0Every_250MSecond();
-        break;
-#ifdef USE_DOMOTICZ
-     case FUNC_EVERY_SECOND:
-        Vl53l0Every_Second();
-        break;
-#endif  // USE_DOMOTICZ
-      case FUNC_JSON_APPEND:
-        Vl53l0Show(1);
-        break;
-#ifdef USE_WEBSERVER
-      case FUNC_WEB_SENSOR:
-        Vl53l0Show(0);
-        break;
-#endif  // USE_WEBSERVER
+      switch (function) {
+#ifdef BLINX
+        case FUNC_EVERY_50_MSECOND:
+            Vl53l0_global(0);
+          break;
+        case FUNC_EVERY_SECOND:
+            Vl53l0_global(1);
+          break;
+        case FUNC_EVERY_10_SECOND:
+            Vl53l0_global(2);
+          break;
+        case FUNC_EVERY_MINUTE:
+            Vl53l0_global(3);
+          break;
+        case FUNC_EVERY_10_MINUTE:
+            Vl53l0_global(4);
+          break;
+        case FUNC_EVERY_HOUR:
+            Vl53l0_global(5);
+          break;
+#endif // BLINX
+        case FUNC_EVERY_250_MSECOND:
+          Vl53l0Every_250MSecond();
+          break;
+  #ifdef USE_DOMOTICZ
+      case FUNC_EVERY_SECOND:
+          Vl53l0Every_Second();
+          break;
+  #endif  // USE_DOMOTICZ
+        case FUNC_JSON_APPEND:
+          Vl53l0Show(1);
+          break;
+  #ifdef USE_WEBSERVER
+        case FUNC_WEB_SENSOR:
+          Vl53l0Show(0);
+          break;
+  #endif  // USE_WEBSERVER
     }
   }
   return result;
 }
+
+#ifdef BLINX
+bool Xsns45(uint32_t function, uint32_t index_csv, uint32_t phantom = 0) {
+  if (!I2cEnabled(XI2C_31)) { return false; }
+
+  bool result = false;
+
+  if (FUNC_INIT == function) {
+    Vl53l0Detect();
+  }
+  else if (VL53L0X_detected) {
+      switch (function) {
+        case FUNC_WEB_SENSOR_BLINX_1s:
+          Vl53l0Show_blinx(0, index_csv);
+          break;
+        case FUNC_WEB_SENSOR_BLINX_10s:
+          Vl53l0Show_blinx(1, index_csv);
+          break;
+        case FUNC_WEB_SENSOR_BLINX_1m:
+          Vl53l0Show_blinx(2, index_csv);
+          break;
+        case FUNC_WEB_SENSOR_BLINX_10m:
+          Vl53l0Show_blinx(3, index_csv);
+          break;
+        case FUNC_WEB_SENSOR_BLINX_1h:
+          Vl53l0Show_blinx(4, index_csv);
+          break;
+    }
+  }
+  return result;
+}
+#endif  // BLINX
 
 #endif  // USE_VL53L0X
 #endif  // USE_I2C

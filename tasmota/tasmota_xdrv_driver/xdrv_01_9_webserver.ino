@@ -433,8 +433,8 @@ const char kButtonAction[] PROGMEM =
   "cs";
 const char kButtonConfirm[] PROGMEM = D_CONFIRM_RESTART "|" D_CONFIRM_RESET_CONFIGURATION;
 
-enum CTypes { CT_HTML, CT_PLAIN, CT_XML, CT_STREAM, CT_APP_JSON, CT_APP_STREAM };
-const char kContentTypes[] PROGMEM = "text/html|text/plain|text/xml|text/event-stream|application/json|application/octet-stream";
+enum CTypes { CT_HTML, CT_PLAIN, CT_XML, CT_STREAM, CT_APP_JSON, CT_APP_STREAM, CT_APP_CSV };
+const char kContentTypes[] PROGMEM = "text/html|text/plain|text/xml|text/event-stream|application/json|application/octet-stream|text/csv";
 
 const char kLoggingOptions[] PROGMEM = D_SERIAL_LOG_LEVEL "|" D_WEB_LOG_LEVEL "|" D_MQTT_LOG_LEVEL "|" D_SYS_LOG_LEVEL;
 const char kLoggingLevels[] PROGMEM = D_NONE "|" D_ERROR "|" D_INFO "|" D_DEBUG "|" D_MORE_DEBUG;
@@ -458,6 +458,7 @@ ESP8266WebServer *Webserver;
 
 struct WEB {
   String chunk_buffer = "";                         // Could be max 2 * CHUNKED_BUFFER_SIZE
+  int chunk_buffer_size = 0;                         // Could be max 2 * CHUNKED_BUFFER_SIZE
   uint32_t upload_size = 0;
   uint16_t upload_error = 0;
   uint8_t state = HTTP_OFF;
@@ -582,6 +583,14 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
 #ifndef FIRMWARE_MINIMAL_ONLY
   { "in", HTTP_ANY, HandleInformation },
 #endif  // Not FIRMWARE_MINIMAL_ONLY
+#ifdef BLINX
+  { "bg", HTTP_ANY, HandleHttpRequestBlinxGet },
+  { "bc", HTTP_ANY, HandleHttpRequestBlinxConfigAnalog }, // config analog port, using ModuleSaveSettings
+  { "br", HTTP_ANY, HandleHttpRequestBlinxRelay }, // for the relay, led, ...
+  { "bd", HTTP_ANY, HandleHttpRequestBlinxDisplay }, // for display
+  { "bl", HTTP_ANY, HandleHttpRequestBlinxLight }, // for light
+  { "bb", HTTP_ANY, HandleHttpRequestBlinxPWM }, // for motor, buzzer
+#endif // BLINX
 };
 
 void WebServer_on(const char * prefix, void (*func)(void), uint8_t method = HTTP_ANY) {
@@ -779,9 +788,12 @@ void WSContentBegin(int code, int ctype) {
   Webserver->setContentLength(CONTENT_LENGTH_UNKNOWN);
   WSSend(code, ctype, "");                         // Signal start of chunked content
   Web.chunk_buffer = "";
+  Web.chunk_buffer_size = 0;
 }
 
 void _WSContentSend(const char* content, size_t size) {  // Lowest level sendContent for all core versions
+  //AddLog(LOG_LEVEL_INFO, PSTR("data send [%s]"), content);
+
   Webserver->sendContent(content, size);
 
   SHOW_FREE_MEM(PSTR("WSContentSend"));
@@ -793,17 +805,24 @@ void _WSContentSend(const String& content) {       // Low level sendContent for 
 }
 
 void WSContentFlush(void) {
-  if (Web.chunk_buffer.length() > 0) {
+  if (Web.chunk_buffer_size > 0) {
     _WSContentSend(Web.chunk_buffer);              // Flush chunk buffer
     Web.chunk_buffer = "";
+    Web.chunk_buffer_size = 0;
   }
 }
 
 void _WSContentSendBufferChunk(const char* content) {
   int len = strlen(content);
+  _WSContentSendBufferChunk(content, len);
+}
+
+void _WSContentSendBufferChunk(const char* content, int len) {
+  //int len = strlen(content);
   if (len < CHUNKED_BUFFER_SIZE) {                 // Append chunk buffer with small content
     Web.chunk_buffer += content;
-    len = Web.chunk_buffer.length();
+    Web.chunk_buffer_size += len;
+    len = Web.chunk_buffer_size;
   }
   if (len >= CHUNKED_BUFFER_SIZE) {                // Either content or chunk buffer is oversize
     WSContentFlush();                              // Send chunk buffer before possible content oversize
@@ -3190,6 +3209,544 @@ void HandleHttpCommand(void)
   }
   WSContentEnd();
 }
+
+#ifdef BLINX
+
+/*-------------------------------------------------------------------------------------------*/
+
+using StringArray2 = std::array<String, 2>;
+
+
+String base64_decode_test(String in) { // function from : https://stackoverflow.com/questions/180947/base64-decode-snippet-in-c
+    String out;
+
+    std::vector<int> T(256,-1);
+    for (int i=0; i<64; i++) T["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[i]] = i;
+
+    int val=0, valb=-8;
+    for (unsigned char c : in) {
+        if (T[c] == -1) break;
+        val = (val << 6) + T[c];
+        valb += 6;
+        if (valb >= 0) {
+            char t = char((val>>valb)&0xFF);
+            String tt = String(t);
+            out += tt;
+            valb -= 8;
+        }
+    }
+
+    return out;
+}
+
+
+std::vector<StringArray2> decodeContentlinx(String content, int numberArg){
+    String decodedContent = base64_decode_test(content); // Decode base64
+    // Splitting the decoded content into key-value pairs
+    std::vector<StringArray2> keyValuePairs;
+    int start = 0;
+    bool stop = false;
+    for (int i = 0; i < numberArg; i++) {
+      int separatorIndex = decodedContent.indexOf("&", start); // Find the position of '&'
+      String key = "";
+      String value = "";
+      String temp = "";
+      if (separatorIndex == -1) {
+        temp = decodedContent.substring(start);
+        stop = true;
+      } else {
+        temp = decodedContent.substring(start, separatorIndex);
+        start = separatorIndex + 1; // Move start index to the next character after '&'
+      }
+      separatorIndex = temp.indexOf("=");
+      if (separatorIndex == -1) {
+        key = temp;
+      } else {
+        key = temp.substring(0, separatorIndex);
+        if(separatorIndex != temp.length()){
+          value = temp.substring(separatorIndex+1);
+        }
+      }
+      StringArray2 t = {key, value};
+      keyValuePairs.push_back(t);
+
+      if (stop) {
+        break;
+      }
+    }
+
+    return keyValuePairs;
+}
+
+void HandleHttpRequestBlinxGet(void)
+{
+  bool codeboot = false;
+  if (Webserver->hasArg("?seqnum")){
+    codeboot = true;
+  }
+
+  String time_ask = Webserver->arg(F("time"));
+  String sensor_ask = Webserver->arg(F("sensor"));
+  String contentBase64 = Webserver->arg(F("content"));
+  if(contentBase64 != ""){
+    std::vector<StringArray2> elements = decodeContentlinx(contentBase64, 2);
+    for(auto element : elements){
+      if (element[0] == "time"){
+        time_ask = element[1];
+      } else if (element[0] == "sensor"){
+        sensor_ask = element[1];
+      }
+    }
+  }
+
+  uint32_t function, size_buffer;
+  if (time_ask == "50ms") {
+    function = FUNC_WEB_SENSOR_BLINX_50Ms;
+    size_buffer = SIZE_BUFFER_50MS;
+  } else if (time_ask == "1s") {
+    function = FUNC_WEB_SENSOR_BLINX_1s;
+    size_buffer = SIZE_BUFFER_1S;
+  } else if (time_ask == "10s") {
+    function = FUNC_WEB_SENSOR_BLINX_10s;
+    size_buffer = SIZE_BUFFER_10S;
+  } else if (time_ask == "1m") {
+    function = FUNC_WEB_SENSOR_BLINX_1m;
+    size_buffer = SIZE_BUFFER_1M;
+  } else if (time_ask == "10m") {
+    function = FUNC_WEB_SENSOR_BLINX_10m;
+    size_buffer = SIZE_BUFFER_10M;
+  } else if (time_ask == "1h") {
+    function = FUNC_WEB_SENSOR_BLINX_1h;
+    size_buffer = SIZE_BUFFER_1H;
+  } else {
+    return;
+  }
+
+  if(!codeboot){
+    WSContentBegin(200, CT_HTML); // to get csv : CT_APP_CSV
+    WSContentFlush();             // Flush chunk buffer (normalyy there will be nothing, because we didn't use it)
+  }
+  
+  if(sensor_ask != ""){
+    
+    String currentArg;
+    std::vector<String> vector_sensor_ask;
+    for (char c : sensor_ask) {
+        if (c != ',') {
+            currentArg += c;
+        } else {
+            vector_sensor_ask.push_back(currentArg);
+            //blinx_getsensor(function, currentArg);
+            currentArg = "";
+        }
+    }
+    if (currentArg != ""){
+      vector_sensor_ask.push_back(currentArg);
+      //blinx_getsensor(function, currentArg);
+    }
+
+    if(codeboot){
+      int size_image = 4; // for the time
+      for (String &name_sensor : vector_sensor_ask){
+        size_image += blinxFindSensor(name_sensor, name_sensor.length(), FUNC_WEB_SENSOR_BLINX_SIZE_NAME, 0) + 1; // +1 for the ,
+        size_image += size_buffer * (blinxFindSensor(name_sensor, name_sensor.length(), FUNC_WEB_SENSOR_BLINX_SIZE_DATA, 0)+1); // +1 for the ,
+      }
+      blinx_encapsulation_data_begin(size_image);
+    }
+
+    for (uint32_t i = 0; i < size_buffer+1; i++){
+      if (i == 0){
+        blinx_send_data_sensor(false, PSTR("Time"));
+      } else{
+        blinx_send_data_sensor(false, PSTR("0"));
+      }
+
+      for (String &name_sensor : vector_sensor_ask){
+        blinxFindSensor(name_sensor, name_sensor.length(), function, i);
+      }
+      blinx_send_data_sensor(false, PSTR("\n"));
+    }
+    
+  } else{
+
+
+    if(codeboot){
+      int size_image = 4; // for the time
+      size_image += blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_SIZE_NAME, 0);
+      size_image += size_buffer * blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_SIZE_DATA, 0);
+      blinx_encapsulation_data_begin(size_image);
+    }
+    for (uint32_t i = 0; i < size_buffer+1; i++){
+      if (i == 0){
+        blinx_send_data_sensor(false, PSTR("Time"));
+      } else{
+        blinx_send_data_sensor(false, PSTR("0"));
+      }
+      blinxFindSensorAll(function, i);
+      blinx_send_data_sensor(false, PSTR("\n"));
+    }
+  }
+
+  if(codeboot){
+    blinx_encapsulation_data_end();
+  }else {
+    WSContentEnd();
+  }
+
+  return;
+}
+
+
+uint32_t name_to_id_type(String input_name){
+  char stemp[30];
+  for (uint32_t i = 0; i < nitems(kGpioNiceList); i++) {
+    uint32_t ridx = pgm_read_word(kGpioNiceList + i) & 0xFFE0;
+    uint32_t midx = BGPIO(ridx);
+    if (String(GetTextIndexed(stemp, sizeof(stemp), midx, kSensorNames)) == input_name){
+      return ridx;
+    }
+  }
+  return -100;
+}
+
+void HandleHttpRequestBlinxConfigAnalog(void)
+{
+ 
+  Settings->last_module = Settings->module;
+  Settings->module = USER_MODULE;
+  SetModuleType();
+  myio template_gp;
+  TemplateGpios(&template_gp);
+
+
+  if(Webserver->hasArg(F("port1A"))){ // AO GPIO2 // sure : test for the led
+    String portString = Webserver->arg(F("port1A"));
+    Settings->my_gp.io[2] = name_to_id_type(portString) + 5;
+  }
+  if(Webserver->hasArg(F("port1B"))){ // AO GPIO3
+    String portString = Webserver->arg(F("port1B"));
+    Settings->my_gp.io[3] = name_to_id_type(portString) + 6;
+  }
+  if(Webserver->hasArg(F("port3A"))){ // AO GPIO4
+    String portString = Webserver->arg(F("port3A"));
+    Settings->my_gp.io[4] = name_to_id_type(portString) + 7;
+  }
+  if(Webserver->hasArg(F("port3B"))){ // AO GPIO5
+    String portString = Webserver->arg(F("port3B"));
+    Settings->my_gp.io[5] = name_to_id_type(portString) + 8;
+  }
+
+  WSContentBegin(200, CT_HTML);
+  WSContentEnd();
+
+  char command[32];
+  snprintf_P(command, sizeof(command), PSTR(D_CMND_BACKLOG "0 " D_CMND_MODULE ";" D_CMND_GPIO));
+  ExecuteWebCommand(command);
+  WebRestart(1);
+  return;
+}
+
+
+void HandleHttpRequestBlinxRelay(void)
+{
+  String deviceString = Webserver->arg(F("device"));
+  int device;
+
+  if(deviceString == "Port1A"){
+    device = 5;
+  } else if(deviceString == "Port1B"){
+    device = 6;
+  } else if(deviceString == "Port2A"){
+    device = 7;
+  } else if(deviceString == "Port2B"){
+    device = 8;
+  } else {
+    return;
+  }
+
+  if (device < 1) { return; };
+
+  String whatToDoString = Webserver->arg(F("action"));
+  int whatToDo = std::stoi(whatToDoString.c_str());
+  
+  if (whatToDo < 0 || whatToDo > 4) { return; };
+  
+  ExecuteCommandPower(device, whatToDo, SRC_IGNORE);
+
+  WSContentBegin(200, CT_HTML);
+  WSContentEnd();
+
+  return;
+}
+
+
+void HandleHttpRequestBlinxDisplay(void)
+{
+  char svalue[32];                   // Command and number parameter
+
+  if(Webserver->hasArg(F("DisplayMode"))){
+    String DisplayModeString = Webserver->arg(F("DisplayMode"));
+    int DisplayMode = std::stoi(DisplayModeString.c_str());
+    if (DisplayMode < 0 || DisplayMode > 5){ return; }
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplayMode %d"), DisplayMode);
+    ExecuteWebCommand(svalue);
+  }
+  if(Webserver->hasArg(F("DisplayDimmer"))){
+    String DisplayDimmerString = Webserver->arg(F("DisplayDimmer"));
+    int DisplayDimmer = std::stoi(DisplayDimmerString.c_str());
+    if (DisplayDimmer < 0 || DisplayDimmer > 100){ return; }
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplayDimmer %d"), DisplayDimmer);
+    ExecuteWebCommand(svalue);
+  }
+  if(Webserver->hasArg(F("DisplaySize"))){
+    String DisplaySizeString = Webserver->arg(F("DisplaySize"));
+    int DisplaySize = std::stoi(DisplaySizeString.c_str());
+    if (DisplaySize < 1 || DisplaySize > 4){ return; }
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplaySize %d"), DisplaySize);
+    ExecuteWebCommand(svalue);
+  }
+  if(Webserver->hasArg(F("DisplayRotate"))){
+    String DisplayRotateString = Webserver->arg(F("DisplayRotate"));
+    int DisplayRotate = std::stoi(DisplayRotateString.c_str());
+    if (DisplayRotate < 0 || DisplayRotate > 3){ return; }
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplayRotate %d"), DisplayRotate);
+    ExecuteWebCommand(svalue);
+  }
+  if(Webserver->hasArg(F("DisplayText"))){
+    String DisplayTextString = Webserver->arg(F("DisplayText"));
+    snprintf_P(svalue, sizeof(svalue), PSTR("DisplayText %s"), DisplayText);
+    ExecuteWebCommand(svalue);
+  }
+
+  WSContentBegin(200, CT_HTML);
+  WSContentEnd();
+
+  return;
+}
+
+
+void HandleHttpRequestBlinxLight(void)
+{
+#ifdef USE_LIGHT
+  char tmp[8];                       // WebGetArg numbers only
+  char svalue[32];                   // Command and number parameter
+  char webindex[5];                  // WebGetArg name
+
+  WebGetArg(PSTR("d0"), tmp, sizeof(tmp));  // 0 - 100 Dimmer value
+  if (strlen(tmp)) {
+    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_DIMMER " %s"), tmp);
+    ExecuteWebCommand(svalue);
+  }
+  WebGetArg(PSTR("w0"), tmp, sizeof(tmp));  // 0 - 100 White value
+  if (strlen(tmp)) {
+    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_WHITE " %s"), tmp);
+    ExecuteWebCommand(svalue);
+  }
+  uint32_t light_device = LightDevice();  // Channel number offset
+  uint32_t pwm_channels = (TasmotaGlobal.light_type & 7) > LST_MAX ? LST_MAX : (TasmotaGlobal.light_type & 7);
+  for (uint32_t j = 0; j < pwm_channels; j++) {
+    snprintf_P(webindex, sizeof(webindex), PSTR("e%d"), j +1);
+    WebGetArg(webindex, tmp, sizeof(tmp));  // 0 - 100 percent
+    if (strlen(tmp)) {
+      snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_CHANNEL "%d %s"), j +light_device, tmp);
+      ExecuteWebCommand(svalue);
+    }
+  }
+  WebGetArg(PSTR("t0"), tmp, sizeof(tmp));  // 153 - 500 Color temperature
+  if (strlen(tmp)) {
+    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_COLORTEMPERATURE " %s"), tmp);
+    ExecuteWebCommand(svalue);
+  }
+  WebGetArg(PSTR("h0"), tmp, sizeof(tmp));  // 0 - 359 Hue value
+  if (strlen(tmp)) {
+    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_HSBCOLOR  "1 %s"), tmp);
+    ExecuteWebCommand(svalue);
+  }
+  WebGetArg(PSTR("n0"), tmp, sizeof(tmp));  // 0 - 99 Saturation value
+  if (strlen(tmp)) {
+    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_HSBCOLOR  "2 %s"), tmp);
+    ExecuteWebCommand(svalue);
+  }
+
+  WSContentBegin(200, CT_HTML);
+  WSContentEnd();
+#endif // USE_LIGHT
+
+  return;
+}
+
+
+void HandleHttpRequestBlinxPWM(void)
+{
+  char tmp[8];                       // WebGetArg numbers only
+
+  WebGetArg(PSTR("index"), tmp, sizeof(tmp));
+  if (strlen(tmp)) {
+    int index = std::stoi(tmp);
+
+    WebGetArg(PSTR("freq"), tmp, sizeof(tmp));
+    if (strlen(tmp)) {
+      int32_t pin = Pin(GPIO_PWM1, index);
+      analogWriteFreq(std::stoi(tmp), pin);
+    }
+
+    WebGetArg(PSTR("value"), tmp, sizeof(tmp));
+    if (strlen(tmp)) {
+      TasmotaGlobal.pwm_value[index] = std::stoi(tmp);
+    }
+    WebGetArg(PSTR("phase"), tmp, sizeof(tmp));
+    if (strlen(tmp)) {
+      TasmotaGlobal.pwm_phase[index] = std::stoi(tmp);
+    }
+    PwmApplyGPIO(false);
+
+    WSContentBegin(200, CT_HTML);
+    WSContentEnd();
+  }
+
+  return;
+}
+
+
+
+#include <Crc32.h>
+
+void blinx_calculate_CRC(const char* data, size_t length) {
+  infoConfigBlinx.encapsulation_crc = crc32_1byte(data, length, infoConfigBlinx.encapsulation_crc);
+}
+
+
+void blinx_encapsulation_data_begin(int size) {
+
+  infoConfigBlinx.encapsulation_size = size;
+
+  infoConfigBlinx.encapsulation_size_padding = 2 - size % 3;
+  infoConfigBlinx.encapsulation_size_div3 = floor((size + 3) / 3);
+  infoConfigBlinx.encapsulation_size_nbytes = infoConfigBlinx.encapsulation_size_div3 * 3;
+
+  char *padding_char = new char(infoConfigBlinx.encapsulation_size_padding & 0xFF);
+
+  infoConfigBlinx.encapsulation_a = 1;
+  infoConfigBlinx.encapsulation_b = 0;
+
+  int png_overhead = 69;
+
+
+  Webserver->client().flush();
+
+  char server[32];
+  snprintf_P(server, sizeof(server), PSTR("Tasmota/%s (%s)"), TasmotaGlobal.version, GetDeviceHardware().c_str());
+  Webserver->sendHeader(F("Server"), server);
+  Webserver->sendHeader(F("Cache-Control"), F("no-cache, no-store, must-revalidate"));
+  Webserver->sendHeader(F("Pragma"), F("no-cache"));
+  Webserver->sendHeader(F("Expires"), F("-1"));
+  Webserver->sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+  //Webserver->sendHeader(F("Connection"), F("Closed"));
+
+  Webserver->setContentLength(CONTENT_LENGTH_UNKNOWN);//infoConfigBlinx.encapsulation_size_nbytes + png_overhead);
+  Webserver->send(200, "image/x-png", "");
+  
+
+  Web.chunk_buffer = "";
+  Web.chunk_buffer_size = 0;
+
+
+  //_WSContentSend("HTTP/1.1 200 OK\r\nContent-Type: image/x-png\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: ");
+  //blinx_send_data_sensor(false, PSTR("%d"), infoConfigBlinx.encapsulation_size_nbytes + png_overhead);
+  //_WSContentSend("\r\nConnection: Closed\r\n\r\n");
+
+  infoConfigBlinx.encapsulation = true;
+  infoConfigBlinx.encapsulation_crc = 0;
+
+  _WSContentSendBufferChunk("\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8);
+
+  _WSContentSendBufferChunk(infoConfigBlinx.get_int(13), 4);
+  blinx_encapsulation_send_data("IHDR", 4);
+  blinx_encapsulation_send_data(infoConfigBlinx.get_int(infoConfigBlinx.encapsulation_size_div3), 4);
+  blinx_encapsulation_send_data(infoConfigBlinx.get_int(1), 4);
+  blinx_encapsulation_send_data("\x08\x02\x00\x00\x00", 5);
+  blinx_encapsulation_send_crc();
+
+  _WSContentSendBufferChunk(infoConfigBlinx.get_int(infoConfigBlinx.encapsulation_size_nbytes + 12), 4);
+  blinx_encapsulation_send_data("IDAT", 4);
+  blinx_encapsulation_send_data("\x78\x01\x01", 3);
+  blinx_encapsulation_send_data(infoConfigBlinx.get_int_short(infoConfigBlinx.encapsulation_size_nbytes+1), 2);
+  blinx_encapsulation_send_data(infoConfigBlinx.get_int_short((infoConfigBlinx.encapsulation_size_nbytes+1) ^ 0xFFFF), 2);
+  blinx_encapsulation_send_data("\x00", 1);
+  blinx_encapsulation_send_data(padding_char, 1);
+  
+  infoConfigBlinx.encapsulation_a = (infoConfigBlinx.encapsulation_a+infoConfigBlinx.encapsulation_size_padding) % 65521;
+  infoConfigBlinx.encapsulation_b = (infoConfigBlinx.encapsulation_b+infoConfigBlinx.encapsulation_a) % 65521;
+
+  WSContentFlush();                                // Flush chunk buffer (normalyy there will be nothing, because we didn't use it)
+}
+
+void blinx_encapsulation_send_data(const char* data, size_t length) { 
+  blinx_calculate_CRC(data, length);
+  //_WSContentSend
+  _WSContentSendBufferChunk(data, length);
+}
+
+void blinx_send_data_sensor(boolean PD, const char* formatP...) { 
+  //PD = true, equivalent WSContentSend_PD
+  //PD = false, equivalent WSContentSend_P--
+  va_list arg;
+  va_start(arg, formatP);
+  
+  char* content = ext_vsnprintf_malloc_P(formatP, arg);
+  if (content == nullptr) { return; }              // Avoid crash
+  size_t l = sizeof(content)/sizeof(*content);
+
+  if (infoConfigBlinx.encapsulation){
+    for (int i = 0; i<l; i++){
+      infoConfigBlinx.encapsulation_a = (infoConfigBlinx.encapsulation_a+content[i]) % 65521;
+      infoConfigBlinx.encapsulation_b = (infoConfigBlinx.encapsulation_b+infoConfigBlinx.encapsulation_a) % 65521;
+    }
+    blinx_encapsulation_send_data(content, l);
+  } else{
+    if (PD && (D_DECIMAL_SEPARATOR[0] != '.')) {
+      for (uint32_t i = 0; i < l; i++) {
+        if ('.' == content[i]) {
+          content[i] = D_DECIMAL_SEPARATOR[0];
+        }
+      }
+    }
+    _WSContentSendBufferChunk(content, l);
+  }
+  free(content);
+
+  va_end(arg);
+}
+
+void blinx_encapsulation_send_crc() { 
+  _WSContentSendBufferChunk(infoConfigBlinx.get_int(infoConfigBlinx.encapsulation_crc), 4);
+  infoConfigBlinx.encapsulation_crc = 0;
+}
+
+void blinx_encapsulation_data_end() { 
+  WSContentFlush();                                // Flush chunk buffer (normalyy there will be nothing, because we didn't use it)
+
+  for (int i = 0; i < infoConfigBlinx.encapsulation_size_padding; i++) {
+    blinx_encapsulation_send_data("\xFF", 1);
+    infoConfigBlinx.encapsulation_a = (infoConfigBlinx.encapsulation_a + 255) % 65521;
+    infoConfigBlinx.encapsulation_b = (infoConfigBlinx.encapsulation_b + infoConfigBlinx.encapsulation_a) % 65521;
+  }
+
+  blinx_encapsulation_send_data(infoConfigBlinx.get_int((infoConfigBlinx.encapsulation_b << 16) + infoConfigBlinx.encapsulation_a), 4);
+  blinx_encapsulation_send_crc();
+  
+  _WSContentSendBufferChunk(infoConfigBlinx.get_int(0), 4);
+  blinx_encapsulation_send_data("IEND", 4);
+  blinx_encapsulation_send_crc();
+
+
+  WSContentEnd();
+  
+  infoConfigBlinx.encapsulation = false;
+}
+
+
+#endif // BLINX
 
 /*-------------------------------------------------------------------------------------------*/
 
