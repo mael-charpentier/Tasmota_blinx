@@ -588,7 +588,7 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
   { "br", HTTP_ANY, HandleHttpRequestBlinxRelay }, // for the relay, led, ...
   { "bd", HTTP_ANY, HandleHttpRequestBlinxDisplay }, // for display
   { "bl", HTTP_ANY, HandleHttpRequestBlinxLight }, // for light
-  { "bb", HTTP_ANY, HandleHttpRequestBlinxPWM }, // for motor, buzzer
+  { "bp", HTTP_ANY, HandleHttpRequestBlinxPWM }, // for motor, buzzer
   { "bi", HTTP_ANY, HandleHttpRequestBlinxInfo }, // to get info
   { "bn", HTTP_ANY, HandleHttpRequestBlinxName }, // to change name
 #endif // BLINX
