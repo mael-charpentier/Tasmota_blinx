@@ -229,8 +229,8 @@ struct {
     }
   }
 
-  uint32_t getTime(uint8_t ind, uint8_t offset, uint8_t index, uint8_t millis_second){
-    return time[ind] + millis_second * ( - offset + index );
+  uint32_t getTime(timeBlinx info, uint8_t index){
+    return time[info.ind] + info.millis_second * index ;
   }
 
   char* get_int(int value) {
@@ -251,6 +251,10 @@ struct {
   
 } infoConfigBlinx;
 
+struct timeBlinx {
+  uint32_t millis_second;
+  uint32_t ind;
+};
 #endif // BLINX
 
 
