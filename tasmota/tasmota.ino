@@ -251,6 +251,10 @@ struct {
   
 } infoConfigBlinx;
 
+struct timeBlinx {
+  uint32_t millis_second;
+  uint32_t ind;
+};
 #endif // BLINX
 
 
