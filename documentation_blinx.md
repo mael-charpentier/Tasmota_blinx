@@ -273,6 +273,7 @@ Cela va être les functions pour enregistrer les données et afficher les donné
 
 Il y a une fonction supplémentaire `sendFunction` qui est là pour dire comment on veut afficher les données, s'il y a des calculs à effectuer avant de les affichers c'est ici ...
 
+Pour la fonction show, l'argument `index_csv` va spécifier l'index qu'on veut afficher, sachant que pour l'index 0 on veut le nom du senseur.
 
 ## si le senseur n'existe pas
 
@@ -281,5 +282,163 @@ Et le fichier pour le senseur doit être mis dans le dossier `tasmota/tasmota_xs
 
 Voici à quoi doit ressemble le fichier du sensor :
 ```cpp
+#ifdef USE_I2C
+#ifdef USE_sensor
+
+
+#include "sensor.h"
+
+
+#ifdef BLINX
+
+bufferSensor* namebuffer = nullptr;
+
+#endif // BLINX
+
+void Detect(void) {
+  for (uint32_t bus = 0; bus < 2; bus++) {
+    ...
+    if(detected){
+      #ifdef BLINX
+        namebuffer = initBufferSensor(5); // 6 if we want the 50ms
+      #endif // BLINX
+    }
+  }
+}
+
+
+#ifdef BLINX
+
+void getData() {
+  ...
+}
+
+void saveData(uint8_t ind) {
+  if(ind == 0){
+    getData();
+    return;
+  }
+
+    if (namebuffer == nullptr) {
+      namebuffer = initBufferSensor(6);
+      namebuffer->buffer[ind].save(0);
+    } else{
+      namebuffer->save(ind);
+    }
+}
+
+void sendFunction(uint16_t val){
+    blinx_send_data_sensor(true, PSTR("%d"), val);
+}
+
+void showBlinx(uint8_t ind, uint32_t index_csv) {
+  if (index_csv == 0){
+      blinx_send_data_sensor(false, PSTR(",name_senseur"));
+  } else{
+      blinx_send_data_sensor(false, PSTR(","));
+      namebuffer->buffer[ind].getData(index_csv, &sendFunction);
+  }
+}
+
+#endif
+
+void Show(bool json) {
+  ...
+}
+
+/*********************************************************************************************\
+ * Interface
+\*********************************************************************************************/
+
+bool Xsns00(uint32_t function) {
+  if (!I2cEnabled(XI2C_id)) { return false; }
+
+  bool result = false;
+
+  if (FUNC_INIT == function) {
+    Detect();
+  }
+  else {
+    switch (function) {
+  #ifdef BLINX
+        case FUNC_EVERY_SECOND:
+          saveData(0);
+          break;
+        case FUNC_EVERY_10_SECOND:
+          saveData(1);
+          break;
+        case FUNC_EVERY_MINUTE:
+          saveData(2);
+          break;
+        case FUNC_EVERY_10_MINUTE:
+          saveData(3);
+          break;
+        case FUNC_EVERY_HOUR:
+          saveData(4);
+          break;
+  #endif  // BLINX
+      case FUNC_JSON_APPEND:
+        Show(1);
+        break;
+  #ifdef USE_WEBSERVER
+      case FUNC_WEB_SENSOR:
+        Show(0);
+        break;
+  #endif  // USE_WEBSERVER
+    }
+  }
+  return result;
+}
+
+#ifdef BLINX
+
+int Xsns00_size_data(uint32_t phantom = 0){
+  return ...;
+}
+
+int Xsns00_size_name(uint32_t phantom = 0){
+  return ...;
+}
+
+int Xsns00(uint32_t function, uint32_t index_csv, uint32_t phantom = 0) {
+  ...
+    switch (function) {
+        case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
+          return Xsns00_size_data(phantom);
+        case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
+          return Xsns00_size_name(phantom);
+        case FUNC_WEB_SENSOR_BLINX_50ms:
+          showBlinx(phantom, 0, index_csv);
+          break;
+        case FUNC_WEB_SENSOR_BLINX_1s:
+          showBlinx(phantom, 1, index_csv);
+          break;
+        case FUNC_WEB_SENSOR_BLINX_10s:
+          showBlinx(phantom, 2, index_csv);
+          break;
+        case FUNC_WEB_SENSOR_BLINX_1m:
+          showBlinx(phantom, 3, index_csv);
+          break;
+        case FUNC_WEB_SENSOR_BLINX_10m:
+          showBlinx(phantom, 4, index_csv);
+          break;
+        case FUNC_WEB_SENSOR_BLINX_1h:
+          showBlinx(phantom, 5, index_csv);
+          break;
+    }
+  ...
+  return -1;
+}
+
+#endif  // BLINX
+
+#endif  // USE_sensor
+#endif  // USE_I2C
 ```
+Vous devez changer : `USE_sensor`, `Xsns00`, `XI2C_id`.
+
+De plus, il faudra changer le compilateur pour qu'il define le `USE_sensor`. Sinon, le senseur ne sera pas activé.
+
+Pour d'informations sur ce que j'ai mis, voir la section au dessus.
+
 Vous pouvez bien sûr rajouter des variables, des functions, ... et modifier ce que j'ai mis.
