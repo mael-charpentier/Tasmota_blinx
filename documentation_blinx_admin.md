@@ -10,7 +10,7 @@ Pour tout ce qui se fait par port serial, suivez ces étapes :
 
 # Compiler le firmware
 
-Nous allons utiliser l'outil : [tasmocompiler_blinx](https://github.com/MaelC001/tasmocompiler_blinx). Suiver les étapes du readme pour l'installer.
+Nous allons utiliser l'outil : [tasmocompiler_blinx](https://github.com/mael-charpentier/blinxcompiler). Suiver les étapes du readme pour l'installer, pour l'instant ne l'installer pas à l'aide de docker.
 
 Ensuite, sélectionnez les paramètres nécessaires. En général, les paramètres par défaut devraient fonctionner. Voici les actions importantes que vous pouvez faire :
 
