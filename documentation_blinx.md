@@ -4,13 +4,20 @@ Voici les différents endpoint de l'api : `http://host/bc`, `http://host/br`, `h
 
 L'`host` peut soit être l'adresse ip du blinx ou `BLINX000.local`, avec `000` l'id du blinx qui peut varier.
 
-Les arguments peuvent être donné soit en get soit en post. Il y a 2 arguments qui sont récurrent à tous les endpoint : `?seqnum` qui signifie qu'on veut que les résultats soient encapsuler dans un png, ce qui est utilisée par codeboot. Et `content`, qui pourra contenir tous les autres arguments encoder en base64, par exemple au lieu de donner `a=0` comme argument on va donner `content=YT0w`.
+Les arguments peuvent être donné soit en get soit en post. Il y a 2 arguments qui sont récurrent à tous les endpoint : `?seqnum` qui signifie qu'on veut que les résultats soient encapsuler dans un png, ce qui est notamment utilisée par codeboot. Et `content`, qui pourra contenir tous les autres arguments encoder en base64, par exemple au lieu de donner `a=0` comme argument on va donner `content=YT0w`.
 
 ## `bc`
 
 Ce endpoint permet de configurer les ports analogues du blinx.
 
-On peut fournir 4 arguments optionnel : `port1A`, `port1B`, `port2A` et `port2B`.
+Les arguments :
+
+- `port1A` (optionnel),
+- `port1B` (optionnel),
+- `port2A` (optionnel),
+- `port2B` (optionnel)
+
+Il faut au moins qu'il y en ait un argument, sinon il ne se passe rien.
 Les arguments vous spécifier le port et la valeur des arguments le type de sensor (voir [documentation tasmota](https://tasmota.github.io/docs/Components-old/#gpio-conversion)) qui doivent être le nom et pas le gpio (sans le nombre à la fin). Les deux types les plus importants sont `PWM` et `Relay`.
 
 ```
@@ -21,10 +28,10 @@ http://BLINX000.local/bc?port1A=PWM&port1B=Relay
 
 Ce endpoint permet de configurer les sensors de type on/off, par exemple les leds, les relays ...
 
-On doit fournir 2 arguments : `device`, `action`.
+Les arguments :
 
-`device` va permettre de savoir quel sensor vous voulez modifer, à l'aide du port. On s'attend à avoir : `Port1A`, `Port1B`, `Port2A` ou `Port2B`.
-`action` représente l'action que vous voulez éxecuter. On s'attend à avoir : `off`, `on`, `toggle` ou `blink`.
+- `device` va permettre de savoir quel sensor vous voulez modifer, à l'aide du port. On s'attend à avoir : `Port1A`, `Port1B`, `Port2A` ou `Port2B`.
+- `action` représente l'action que vous voulez éxecuter. On s'attend à avoir : `off`, `on`, `toggle` ou `blink`.
 
 ```
 http://BLINX000.local/bc?device=Port1A&action=off
@@ -34,13 +41,15 @@ http://BLINX000.local/bc?device=Port1A&action=off
 
 Ce endpoint permet de configurer le display.
 
-On peut fournir 5 arguments optionnel :
+Les arguments :
 
-- `DisplayMode`, qui permet de gérer le mode du display, pour voir les différents modes voir [documentation tasmota](https://tasmota.github.io/docs/Displays/#displaymode). On a un mode supplémentaire, le mode 6, qui est propre à blinx. Ce mode permet d'afficher le hostname sur la première ligne avec le ssid (en alternance), puis les 3 autres lignes servent à afficher des senseurs. On s'attend d'avoir un int de 0 à 6, inclus.
-- `DisplayDimmer`, qui permet de gérer l'intensité du display, on s'attend d'avoir un int de 0 à 100, inclus. Avec 0 pour éteindre le display.
-- `DisplaySize`, qui permet de scale ce qui est affiché. Il doit s'agir d'un int compris entre 1 et 4, inclus.
-- `DisplayRotate`, qui permet de rotate ce qui est affiché. Il doit s'agir d'un int compris entre 0 et 3, inclus. Avec 0 qui représente 0°, 1 pour 90°, 2 pour 180° et 3 pour 270°.
-- `DisplayText`, qui permet de changer le texte qui est affiché. Pour pouvoir utiliser cet argument, il faut que le mode soit sur 0. Si vous voulez afficher des choses spéciaux voir [documentation de tasmota](https://tasmota.github.io/docs/Displays/#displaytext).
+- `DisplayMode` (optionnel), qui permet de gérer le mode du display, pour voir les différents modes voir [documentation tasmota](https://tasmota.github.io/docs/Displays/#displaymode). On a un mode supplémentaire, le mode 6, qui est propre à blinx. Ce mode permet d'afficher le hostname sur la première ligne avec le ssid (en alternance), puis les 3 autres lignes servent à afficher des senseurs. On s'attend d'avoir un int de 0 à 6, inclus.
+- `DisplayDimmer` (optionnel), qui permet de gérer l'intensité du display, on s'attend d'avoir un int de 0 à 100, inclus. Avec 0 pour éteindre le display.
+- `DisplaySize` (optionnel), qui permet de scale ce qui est affiché. Il doit s'agir d'un int compris entre 1 et 4, inclus.
+- `DisplayRotate` (optionnel), qui permet de rotate ce qui est affiché. Il doit s'agir d'un int compris entre 0 et 3, inclus. Avec 0 qui représente 0°, 1 pour 90°, 2 pour 180° et 3 pour 270°.
+- `DisplayText` (optionnel), qui permet de changer le texte qui est affiché. Pour pouvoir utiliser cet argument, il faut que le mode soit sur 0. Si vous voulez afficher des choses spéciaux voir [documentation de tasmota](https://tasmota.github.io/docs/Displays/#displaytext).
+
+Il faut au moins qu'il y en ait un argument, sinon il ne se passe rien.
 
 ```
 http://BLINX000.local/bd?DisplayMode=0&DisplayText=Hello, World
@@ -50,14 +59,16 @@ http://BLINX000.local/bd?DisplayMode=0&DisplayText=Hello, World
 
 Ce endpoint permet de configurer les sensors de type light.
 
-On peut fournir 5 arguments optionnel :
+Les arguments :
 
-- `d0`, qui permet de gérer l'intensité des lights, on s'attend à un int de 0 à 100, inclus.
-- `w0`, qui permet de gérer la white value des lights, on s'attend à un int de 0 à 100, inclus.
-- `ei`, qui permet de changer la valeur des lights, avec `i` le numero de la light.
-- `t0`, qui permet de gérer la temperature des coleurs des lights, on s'attend à un int de 153 à 500, inclus.
-- `h0`, qui permet de gérer la teinte des lights, on s'attend à un int de 0 à 359, inclus.
-- `n0`, qui permet de gérer la saturation des lights, on s'attend à un int de 0 à 99, inclus.
+- `d0` (optionnel), qui permet de gérer l'intensité des lights, on s'attend à un int de 0 à 100, inclus.
+- `w0` (optionnel), qui permet de gérer la white value des lights, on s'attend à un int de 0 à 100, inclus.
+- `ei` (optionnel), qui permet de changer la valeur des lights, avec `i` le numero de la light.
+- `t0` (optionnel), qui permet de gérer la temperature des coleurs des lights, on s'attend à un int de 153 à 500, inclus.
+- `h0` (optionnel), qui permet de gérer la teinte des lights, on s'attend à un int de 0 à 359, inclus.
+- `n0` (optionnel), qui permet de gérer la saturation des lights, on s'attend à un int de 0 à 99, inclus.
+
+Il faut au moins qu'il y en ait un argument, sinon il ne se passe rien.
 
 ```
 http://BLINX000.local/bl?d0=50
@@ -67,12 +78,14 @@ http://BLINX000.local/bl?d0=50
 
 Ce endpoint permet de configurer les sensors de type pwm.
 
-On doit fournir 1 argument et on peut fournir 3 autres arguments optionnels :
+Les arguments :
 
 - `index`, qui permet d'identifier le senseur.
 - `freq` (optionnel), qui permet de gérer la fréquence.
 - `value` (optionnel), qui permet de gérer la value.
 - `phase` (optionnel), qui permet de gérer la phase.
+
+Il faut au moins qu'il y en ait un argument optinnel, sinon il ne se passe rien.
 
 ```
 http://BLINX000.local/bp?index=0&freq=100&value=50
@@ -196,11 +209,18 @@ int Xsns00(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint
 #endif  // BLINX
 ```
 
-La function `Xsns00_size_data` a retourner la taille que prend un data, c'est pour calculer la taille de l'image pour codeboot.
+La function `Xsns00_size_data` va retourner la taille que prend un data.
 
-La function `Xsns00_size_name` a retourner la taille que prend le nom du senseur, c'est pour calculer la taille de l'image pour codeboot.
+La function `Xsns00_size_name` va retourner la taille que prend le nom du senseur.
 
-Pour la nouvelle function `Xsns00`, qu'on vient de créer, vous aller faire un copier-coller de la function `Xsns00`, puis on va changer ce que retourne la fonction, ce que la fonction prend en paramètre et le switch.
+Pour la nouvelle function `Xsns00`, qu'on vient de créer, vous aller faire :
+
+- un copier-coller de la function `Xsns00`
+- on va changer :
+  - ce que retourne la fonction,
+  - ce que la fonction prend en paramètre,
+  - le switch
+
 La function `show` appeler dans le switch va être une fonction qu'on va créer plus tard, pour afficher les données du senseurs.
 
 L'argument `phantomType` est utilisé sur on lit différent type du même senseur, par exemple le senseur sht3xpeut lire de 3 senseurs différent : `sht3x`, `sht3c` et `sht4x`.
