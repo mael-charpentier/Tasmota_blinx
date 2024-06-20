@@ -3,7 +3,7 @@ def generate_cpp_functions(prefix_dict):
 
     # Helper function to generate the function name based on the prefix
     def get_function_name(prefix):
-        return "blinxFindSensor" + "".join([c.upper() for c in prefix])
+        return "blinxFindSensor" + ("" if prefix == "" else "_"+prefix.upper())
 
     # Function to generate C++ code for a given prefix
     def generate_function(prefix, remaining_dict):
@@ -21,7 +21,7 @@ def generate_cpp_functions(prefix_dict):
                 if len(key) == len(prefix) + 1:
                     remaining_dict = {k: v for k, v in prefix_dict.items() if k.startswith(prefix + char)}
                     cpp_code += f"        if (l == {len(key)}){{\n"
-                    cpp_code += f"            return Xsns{remaining_dict[key][0]}(function, index_csv, {remaining_dict[key][1]});\n" # TODO phantom
+                    cpp_code += f"            return Xsns{remaining_dict[key][0]}(function, index_csv, {remaining_dict[key][1]}, {remaining_dict[key][2]});\n" # TODO phantom
                     cpp_code += f"        }} else {{\n"
                     if len(remaining_dict) > 1:
                         next_func_name = get_function_name(prefix + char)
@@ -44,7 +44,7 @@ def generate_cpp_functions(prefix_dict):
         cpp_code += "int blinxFindSensorAll(uint32_t function, uint32_t index_csv){\n"
         cpp_code += "   int sum = 0;\n"
         for id in prefix_dict.values():
-            cpp_code += f"   sum += Xsns{id[0]}(function, index_csv, {id[1]}) + 1;\n" # TODO phantom
+            cpp_code += f"   sum += Xsns{id[0]}(function, index_csv, {id[1]}, {id[2]}) + 1;\n" # TODO phantom
         cpp_code += "   return sum;\n"
         cpp_code += "}\n\n"
         return cpp_code
@@ -68,7 +68,12 @@ def generate_cpp_functions(prefix_dict):
 
     return cpp_code + all_sensor()
 
-# Example usage
-prefix_dict = {"sht3c_temp": ["14",1], "sht3c_humi": ["14",2]}
+# element in the dict : {"name_sensor" : ["id_sensor", type_sensor, type_data], ...}, if only 1 type put 0, if only 1 data put 0
+
+prefix_dict = {
+    "sht3x_temp": ["14",1, 1], "sht3x_humi": ["14",1, 2],
+    "sht3c_temp": ["14",2, 1], "sht3c_humi": ["14",2, 2],
+    "sht4x_temp": ["14",3, 1], "sht4x_humi": ["14",3, 2],
+}
 cpp_code = generate_cpp_functions(prefix_dict)
 print(cpp_code)

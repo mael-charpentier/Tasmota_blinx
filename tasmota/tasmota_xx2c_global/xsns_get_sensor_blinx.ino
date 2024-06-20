@@ -81,7 +81,7 @@ int blinxFindSensorSHT3C_HUM(String input, size_t l, uint32_t function, uint32_t
     if (l == 9) { return -1; }
     else if (input[9] == 'i'){
         if (l == 10){
-            return Xsns14(function, index_csv, 2);
+            return Xsns14(function, index_csv, 2, 2);
         } else {
             return -1;
         }
@@ -109,7 +109,7 @@ int blinxFindSensorSHT3C_TEM(String input, size_t l, uint32_t function, uint32_t
     if (l == 9) { return -1; }
     else if (input[9] == 'p'){
         if (l == 10){
-            return Xsns14(function, index_csv, 1);
+            return Xsns14(function, index_csv, 2, 1);
         } else {
             return -1;
         }
@@ -122,8 +122,8 @@ int blinxFindSensorSHT3C_TEM(String input, size_t l, uint32_t function, uint32_t
 
 int blinxFindSensorAll(uint32_t function, uint32_t index_csv){
    int sum = 0;
-   sum += Xsns14(function, index_csv, 1) + 1;
-   sum += Xsns14(function, index_csv, 2) + 1;
+   sum += Xsns14(function, index_csv, 2, 1) + 1;
+   sum += Xsns14(function, index_csv, 2, 2) + 1;
    return sum;
 }
 

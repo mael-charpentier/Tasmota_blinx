@@ -203,19 +203,34 @@ void sendFunction_sht3x_tem(uint16_t val){
     blinx_send_data_sensor(true, HTTP_SNS_F_TEMP, types_blinx_sht3x, Settings->flag2.temperature_resolution, &val, TempUnit());
 }
 void sendFunction_sht3x_hum(uint16_t val){
+    float h = ((float)(val * 100) / 65535.0);
+    h = ConvertHumidity(h);
+    char parameter[FLOATSZ];
+    dtostrfd(h, Settings->flag2.humidity_resolution, parameter);
+    blinx_send_data_sensor(true, PSTR("%s" D_UNIT_PERCENT), parameter);
+}
+void sendFunction_sht3x_hum_sht4x(uint16_t val){
+    float h = ((float)(val * 125) / 65535.0) - 6.0;
+    h = ConvertHumidity(h);
     char parameter[FLOATSZ];
     dtostrfd(val, Settings->flag2.humidity_resolution, parameter);
     blinx_send_data_sensor(true, HTTP_SNS_HUM, types_blinx_sht3x, parameter);
 }
 
-void Sht3xShow_blinx(uint8_t temp, uint8_t ind, uint32_t index_csv) {
-  if (temp == 0){
-    Sht3xShow_blinx(1, ind, index_csv);
-    Sht3xShow_blinx(2, ind, index_csv);
+void Sht3xShow_blinx(uint32_t phantomType, uint32_t phantomData, uint8_t ind, uint32_t index_csv) {
+  if (phantomType == 0){
+    Sht3xShow_blinx(1, phantomData, ind, index_csv);
+    Sht3xShow_blinx(2, phantomData, ind, index_csv);
+    Sht3xShow_blinx(3, phantomData, ind, index_csv);
+  }
+  if (phantomData == 0){
+    Sht3xShow_blinx(phantomType, 1, ind, index_csv);
+    Sht3xShow_blinx(phantomType, 2, ind, index_csv);
     return;
   }
 
-  uint8_t temp_humi = temp - 1;
+  uint8_t type_sensor = phantomType - 1;
+  uint8_t temp_humi = phantomData - 1;
 
   
   char name[5];
@@ -229,6 +244,7 @@ void Sht3xShow_blinx(uint8_t temp, uint8_t ind, uint32_t index_csv) {
     char types_blinx_sht3x[11];
     for (uint32_t i = 0; i < sht3x_count; i++) {
       if (bufferSensor_Sht3x[temp_humi][i] == nullptr) { continue; }
+      if (sht3x_sensors[i].types != type_sensor) { continue; }
 
       strlcpy(types_blinx_sht3x, sht3x_sensors[i].types, sizeof(types_blinx_sht3x));
 
@@ -237,11 +253,14 @@ void Sht3xShow_blinx(uint8_t temp, uint8_t ind, uint32_t index_csv) {
   } else{
     for (uint32_t i = 0; i < sht3x_count; i++) {
       if (bufferSensor_Sht3x[temp_humi][i] == nullptr) { continue; }
+      if (sht3x_sensors[i].types != type_sensor) { continue; }
 
 
       blinx_send_data_sensor(false, PSTR(","));
       if (temp_humi == 0){
         bufferSensor_Sht3x[temp_humi][i]->buffer[ind].getData(index_csv, &sendFunction_sht3x_tem);
+      } else if (type_sensor == SHT3X_TYPE_SHT4X){
+        bufferSensor_Sht3x[temp_humi][i]->buffer[ind].getData(index_csv, &sendFunction_sht3x_hum_sht4x);
       } else {
         bufferSensor_Sht3x[temp_humi][i]->buffer[ind].getData(index_csv, &sendFunction_sht3x_hum);
       }
@@ -316,15 +335,23 @@ bool Xsns14(uint32_t function) {
 
 #ifdef BLINX
 
-int Xsns14_size_data(uint32_t phantom = 0){ // TODO number not true
-  return 10;
+int Xsns14_size_data(uint32_t phantomType = 0, uint32_t phantomData = 0){ // TODO number not true
+  if(phantomType == 2){
+    if(phantomData = 1){
+      return 7;
+    } else{
+      return 5;
+    }
+  }
 }
 
-int Xsns14_size_name(uint32_t phantom = 0){ // TODO number not true
-  return 10;
+int Xsns14_size_name(uint32_t phantomType = 0, uint32_t phantomData = 0){
+    if(phantomType == 2){
+      return 16;
+    }
 }
 
-int Xsns14(uint32_t function, uint32_t index_csv, uint32_t phantom = 0) {
+int Xsns14(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
   if (!I2cEnabled(XI2C_15)) { return false; }
 
 
@@ -334,23 +361,23 @@ int Xsns14(uint32_t function, uint32_t index_csv, uint32_t phantom = 0) {
   else if (sht3x_count) {
     switch (function) {
         case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
-          return Xsns14_size_data(phantom);
+          return Xsns14_size_data(phantomType, phantomData);
         case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
-          return Xsns14_size_name(phantom);
+          return Xsns14_size_name(phantomType, phantomData);
         case FUNC_WEB_SENSOR_BLINX_1s:
-          Sht3xShow_blinx(phantom, 0, index_csv);
+          Sht3xShow_blinx(phantomType, phantomData, 0, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_10s:
-          Sht3xShow_blinx(phantom, 1, index_csv);
+          Sht3xShow_blinx(phantomType, phantomData, 1, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_1m:
-          Sht3xShow_blinx(phantom, 2, index_csv);
+          Sht3xShow_blinx(phantomType, phantomData, 2, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_10m:
-          Sht3xShow_blinx(phantom, 3, index_csv);
+          Sht3xShow_blinx(phantomType, phantomData, 3, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_1h:
-          Sht3xShow_blinx(phantom, 4, index_csv);
+          Sht3xShow_blinx(phantomType, phantomData, 4, index_csv);
           break;
     }
   }
