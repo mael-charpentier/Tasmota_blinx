@@ -154,6 +154,7 @@ La function `saveData` va être une fonction qu'on va créer pour lires les donn
 Nous allons ensuite créer 3 functions après celle-ci :
 ```cpp
 #ifdef BLINX
+
 int Xsns00_size_data(uint32_t phantom = 0){
   return ...;
 }
@@ -201,6 +202,9 @@ La function `Xsns00_size_name` a retourner la taille que prend le nom du senseur
 
 Pour la nouvelle function `Xsns00`, qu'on vient de créer, vous aller faire un copier-coller de la function `Xsns00`, puis on va changer ce que retourne la fonction, ce que la fonction prend en paramètre et le switch.
 La function `show` appeler dans le switch va être une fonction qu'on va créer plus tard, pour afficher les données du senseurs.
+
+L'argument `phantom` est utilisé sur on lit différent type de données, par exemple le senseur sht3x lit 2 données différentes : la température et l'humidité.
+Donc si `phantom=0` on va montrer les 2 données, si `phantom=1` on va montrer une donnée (par exemple la température) et si `phantom=2` on va montrer l'autre donnée (par exemple 'humidité).
 
 Pour trouver la function detect, dont je parle plus tard, vous allez dans la fonction `Xsns00`. À l'intérieur vous devriez avoir `if (FUNC_INIT == function) { ... }` qui fait un appel de fonction. La fonction qu'il appel est la fonction detect.
 
