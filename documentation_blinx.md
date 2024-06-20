@@ -155,38 +155,38 @@ Nous allons ensuite créer 3 functions après celle-ci :
 ```cpp
 #ifdef BLINX
 
-int Xsns00_size_data(uint32_t phantom = 0){
+int Xsns00_size_data(uint32_t phantomType = 0, uint32_t phantomData = 0){
   return ...;
 }
 
-int Xsns00_size_name(uint32_t phantom = 0){
+int Xsns00_size_name(uint32_t phantomType = 0, uint32_t phantomData = 0){
   return ...;
 }
 
-int Xsns00(uint32_t function, uint32_t index_csv, uint32_t phantom = 0) {
+int Xsns00(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
   ...
     switch (function) {
         case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
-          return Xsns00_size_data(phantom);
+          return Xsns00_size_data(phantomType, phantomData);
         case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
-          return Xsns00_size_name(phantom);
+          return Xsns00_size_name(phantomType, phantomData);
         case FUNC_WEB_SENSOR_BLINX_50ms:
-          show(phantom, 0, index_csv);
+          show(phantomType, phantomData, 0, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_1s:
-          show(phantom, 1, index_csv);
+          show(phantomType, phantomData, 1, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_10s:
-          show(phantom, 2, index_csv);
+          show(phantomType, phantomData, 2, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_1m:
-          show(phantom, 3, index_csv);
+          show(phantomType, phantomData, 3, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_10m:
-          show(phantom, 4, index_csv);
+          show(phantomType, phantomData, 4, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_1h:
-          show(phantom, 5, index_csv);
+          show(phantomType, phantomData, 5, index_csv);
           break;
     }
   ...
@@ -203,8 +203,10 @@ La function `Xsns00_size_name` a retourner la taille que prend le nom du senseur
 Pour la nouvelle function `Xsns00`, qu'on vient de créer, vous aller faire un copier-coller de la function `Xsns00`, puis on va changer ce que retourne la fonction, ce que la fonction prend en paramètre et le switch.
 La function `show` appeler dans le switch va être une fonction qu'on va créer plus tard, pour afficher les données du senseurs.
 
-L'argument `phantom` est utilisé sur on lit différent type de données, par exemple le senseur sht3x lit 2 données différentes : la température et l'humidité.
-Donc si `phantom=0` on va montrer les 2 données, si `phantom=1` on va montrer une donnée (par exemple la température) et si `phantom=2` on va montrer l'autre donnée (par exemple 'humidité).
+L'argument `phantomType` est utilisé sur on lit différent type du même senseur, par exemple le senseur sht3xpeut lire de 3 senseurs différent : `sht3x`, `sht3c` et `sht4x`.
+
+L'argument `phantomData` est utilisé sur on lit différent données du même senseur, par exemple le senseur sht3x lit 2 données différentes : la température et l'humidité.
+Donc si `phantomData=0` on va montrer les 2 données, si `phantomData=1` on va montrer une donnée (par exemple la température) et si `phantomData=2` on va montrer l'autre donnée (par exemple 'humidité).
 
 Pour trouver la function detect, dont je parle plus tard, vous allez dans la fonction `Xsns00`. À l'intérieur vous devriez avoir `if (FUNC_INIT == function) { ... }` qui fait un appel de fonction. La fonction qu'il appel est la fonction detect.
 
@@ -392,38 +394,38 @@ bool Xsns00(uint32_t function) {
 
 #ifdef BLINX
 
-int Xsns00_size_data(uint32_t phantom = 0){
+int Xsns00_size_data(uint32_t phantomType = 0, uint32_t phantomData = 0){
   return ...;
 }
 
-int Xsns00_size_name(uint32_t phantom = 0){
+int Xsns00_size_name(uint32_t phantomType = 0, uint32_t phantomData = 0){
   return ...;
 }
 
-int Xsns00(uint32_t function, uint32_t index_csv, uint32_t phantom = 0) {
+int Xsns00(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
   ...
     switch (function) {
         case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
-          return Xsns00_size_data(phantom);
+          return Xsns00_size_data(phantomType, phantomData);
         case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
-          return Xsns00_size_name(phantom);
+          return Xsns00_size_name(phantomType, phantomData);
         case FUNC_WEB_SENSOR_BLINX_50ms:
-          showBlinx(phantom, 0, index_csv);
+          showBlinx(phantomType, phantomData, 0, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_1s:
-          showBlinx(phantom, 1, index_csv);
+          showBlinx(phantomType, phantomData, 1, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_10s:
-          showBlinx(phantom, 2, index_csv);
+          showBlinx(phantomType, phantomData, 2, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_1m:
-          showBlinx(phantom, 3, index_csv);
+          showBlinx(phantomType, phantomData, 3, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_10m:
-          showBlinx(phantom, 4, index_csv);
+          showBlinx(phantomType, phantomData, 4, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_1h:
-          showBlinx(phantom, 5, index_csv);
+          showBlinx(phantomType, phantomData, 5, index_csv);
           break;
     }
   ...
