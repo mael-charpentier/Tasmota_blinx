@@ -116,7 +116,7 @@ http://blinx000.local/.csv?time=1s
 
 # add buffer to sensor
 
-Il y a 2 cas, on veut modifier un senseur déjà existants ou on veut ajouter un senseur de 0. Les senseurs qui nous intéresse sont les `xsns`
+Il y a 2 cas, on veut modifier un senseur déjà existants ou on veut ajouter un senseur de 0. Les senseurs qui nous intéresse sont les `xsns` (`tasmota/tasmota_xsns_sensor`).
 
 ## senseur déjà existants
 
@@ -199,14 +199,16 @@ La function `Xsns00_size_data` a retourner la taille que prend un data, c'est po
 
 La function `Xsns00_size_name` a retourner la taille que prend le nom du senseur, c'est pour calculer la taille de l'image pour codeboot.
 
-Pour la nouvelle function `Xsns00`, vous aller faire un copier-coller de la function `Xsns00`, puis on va changer ce que retourne la fonction, ce que la fonction prend en paramètre et le switch.
+Pour la nouvelle function `Xsns00`, qu'on vient de créer, vous aller faire un copier-coller de la function `Xsns00`, puis on va changer ce que retourne la fonction, ce que la fonction prend en paramètre et le switch.
 La function `show` appeler dans le switch va être une fonction qu'on va créer plus tard, pour afficher les données du senseurs.
+
+Pour trouver la function detect, dont je parle plus tard, vous allez dans la fonction `Xsns00`. À l'intérieur vous devriez avoir `if (FUNC_INIT == function) { ... }` qui fait un appel de fonction. La fonction qu'il appel est la fonction detect.
 
 Revenons au début du fichier, just avant la function detect, on va ajouter :
 ```cpp
 #ifdef BLINX
 
-bufferSensor* namebuffer;
+bufferSensor* namebuffer = nullptr;
 
 #endif // BLINX
 ```
