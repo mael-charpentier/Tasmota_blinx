@@ -270,3 +270,12 @@ Cela va être les functions pour enregistrer les données et afficher les donné
 Il y a une fonction supplémentaire `sendFunction` qui est là pour dire comment on veut afficher les données, s'il y a des calculs à effectuer avant de les affichers c'est ici ...
 
 
+## si le senseur n'existe pas
+
+La librairy du senseur doit être mis dans le dossier `lib/libeps32` ou `lib/lib_i2c`.
+Et le fichier pour le senseur doit être mis dans le dossier `tasmota/tasmota_xsns_sensor`.
+
+Voici à quoi doit ressemble le fichier du sensor :
+```cpp
+```
+Vous pouvez bien sûr rajouter des variables, des functions, ... et modifier ce que j'ai mis.
