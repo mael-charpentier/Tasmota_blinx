@@ -1,7 +1,7 @@
 
 # add buffer to sensor
 
-Il y a 2 cas, on veut modifier un senseur déjà existants ou on veut ajouter un senseur de 0. Les senseurs qui nous intéresse sont les `xsns` (`tasmota/tasmota_xsns_sensor`).
+Il y a 2 cas, on veut modifier un senseur déjà existants ou on veut ajouter un senseur de 0. Les senseurs qui nous intéresse sont les `xsns` ([`tasmota/tasmota_xsns_sensor`](./../tasmota/tasmota_xsns_sensor)).
 
 ## senseur déjà existants
 
@@ -171,8 +171,8 @@ Pour la fonction show, l'argument `index_csv` va spécifier l'index qu'on veut a
 
 ## si le senseur n'existe pas
 
-La librairy du senseur doit être mis dans le dossier `lib/libeps32` ou `lib/lib_i2c`.
-Et le fichier pour le senseur doit être mis dans le dossier `tasmota/tasmota_xsns_sensor`.
+La librairy du senseur doit être mis dans le dossier [`lib/libeps32`](./../lib/libeps32) ou [`lib/lib_i2c`](./../lib/lib_i2c).
+Et le fichier pour le senseur doit être mis dans le dossier [`tasmota/tasmota_xsns_sensor`](./../tasmota/tasmota_xsns_sensor).
 
 Pour voir à quoi cela doit ressembler, je conseille d'aller voir le code pour le [sensor de température et humidité](./../tasmota/tasmota_xsns_sensor/xsns_14_sht3x.ino). Globalement, les informations qui devront être modifié : `USE_sensor`, `Xsns00`, `XI2C_id`, ainsi que comment lire les données et comment les affichers.
 
