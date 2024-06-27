@@ -584,12 +584,13 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
   { "in", HTTP_ANY, HandleInformation },
 #endif  // Not FIRMWARE_MINIMAL_ONLY
 #ifdef BLINX
-  { "bg", HTTP_ANY, HandleHttpRequestBlinxGet },
   { "bc", HTTP_ANY, HandleHttpRequestBlinxConfigAnalog }, // config analog port, using ModuleSaveSettings
   { "br", HTTP_ANY, HandleHttpRequestBlinxRelay }, // for the relay, led, ...
   { "bd", HTTP_ANY, HandleHttpRequestBlinxDisplay }, // for display
   { "bl", HTTP_ANY, HandleHttpRequestBlinxLight }, // for light
-  { "bb", HTTP_ANY, HandleHttpRequestBlinxPWM }, // for motor, buzzer
+  { "bp", HTTP_ANY, HandleHttpRequestBlinxPWM }, // for motor, buzzer
+  { "bi", HTTP_ANY, HandleHttpRequestBlinxInfo }, // to get info
+  { "bn", HTTP_ANY, HandleHttpRequestBlinxName }, // to change name
 #endif // BLINX
 };
 
@@ -3286,15 +3287,12 @@ void HandleHttpRequestBlinxGet(void)
   }
 
   String time_ask = Webserver->arg(F("time"));
-  String sensor_ask = Webserver->arg(F("sensor"));
   String contentBase64 = Webserver->arg(F("content"));
   if(contentBase64 != ""){
-    std::vector<StringArray2> elements = decodeContentlinx(contentBase64, 2);
+    std::vector<StringArray2> elements = decodeContentlinx(contentBase64, 1);
     for(auto element : elements){
       if (element[0] == "time"){
         time_ask = element[1];
-      } else if (element[0] == "sensor"){
-        sensor_ask = element[1];
       }
     }
   }
@@ -3340,30 +3338,35 @@ void HandleHttpRequestBlinxGet(void)
     WSContentFlush();             // Flush chunk buffer (normalyy there will be nothing, because we didn't use it)
   }
   
-  if(sensor_ask != ""){
     
-    String currentArg;
-    std::vector<String> vector_sensor_ask;
-    for (char c : sensor_ask) {
-        if (c != ',') {
-            currentArg += c;
-        } else {
-            vector_sensor_ask.push_back(currentArg);
-            //blinx_getsensor(function, currentArg);
-            currentArg = "";
-        }
-    }
-    if (currentArg != ""){
-      vector_sensor_ask.push_back(currentArg);
-      //blinx_getsensor(function, currentArg);
-    }
+  String path = Webserver->uri();
+  String currentArg;
+  std::vector<String> vector_sensor_ask;
+  for (char c : path) {
+      if (c == '.') {
+        break;
+      } else if (c == '/') {
+      } else if (c != ',') {
+          currentArg += c;
+      } else {
+          vector_sensor_ask.push_back(currentArg);
+          //blinx_getsensor(function, currentArg);
+          currentArg = "";
+      }
+  }
+  if (currentArg != ""){
+    vector_sensor_ask.push_back(currentArg);
+    //blinx_getsensor(function, currentArg);
+  }
 
+  if(vector_sensor_ask.size() != 0){
     if(codeboot){
       int size_image = 4; // for the time
       for (String &name_sensor : vector_sensor_ask){
         size_image += blinxFindSensor(name_sensor, name_sensor.length(), FUNC_WEB_SENSOR_BLINX_SIZE_NAME, 0) + 1; // +1 for the ,
         size_image += size_buffer * (blinxFindSensor(name_sensor, name_sensor.length(), FUNC_WEB_SENSOR_BLINX_SIZE_DATA, 0)+1); // +1 for the ,
       }
+      size_image += size_buffer * (std::to_string(infoConfigBlinx.getTime(infoTime, 0, size_buffer)).length());
       blinx_encapsulation_data_begin(size_image);
     }
 
@@ -3386,14 +3389,14 @@ void HandleHttpRequestBlinxGet(void)
     if(codeboot){
       int size_image = 4; // for the time
       size_image += blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_SIZE_NAME, 0);
-      size_image += size_buffer * blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_SIZE_DATA, 0);
+      size_image += size_buffer * (blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_SIZE_DATA, 0) + (std::to_string(infoConfigBlinx.getTime(infoTime, 0, size_buffer)).length()));
       blinx_encapsulation_data_begin(size_image);
     }
     for (uint32_t i = 0; i < size_buffer+1; i++){
       if (i == 0){
         blinx_send_data_sensor(false, PSTR("Time"));
       } else{
-        blinx_send_data_sensor(false, PSTR("0"));
+        blinx_send_data_sensor(false, PSTR("%d"), infoConfigBlinx.getTime(infoTime, i, size_buffer));
       }
       blinxFindSensorAll(function, i);
       blinx_send_data_sensor(false, PSTR("\n"));
@@ -3425,6 +3428,32 @@ uint32_t name_to_id_type(String input_name){
 void HandleHttpRequestBlinxConfigAnalog(void)
 {
  
+  bool codeboot = false;
+  if (Webserver->hasArg("?seqnum")){
+    codeboot = true;
+  }
+
+  String port1AString = Webserver->arg(F("port1A"));
+  String port1BString = Webserver->arg(F("port1B"));
+  String port2AString = Webserver->arg(F("port2A"));
+  String port2BString = Webserver->arg(F("port2B"));
+
+  String contentBase64 = Webserver->arg(F("content"));
+  if(contentBase64 != ""){
+    std::vector<StringArray2> elements = decodeContentlinx(contentBase64, 4);
+    for(auto element : elements){
+      if (element[0] == "port1B"){
+        port1AString = element[1];
+      } else if (element[0] == "port1B"){
+        port1BString = element[1];
+      } else if (element[0] == "port2A"){
+        port2AString = element[1];
+      } else if (element[0] == "port2B"){
+        port2BString = element[1];
+      }
+    }
+  }
+
   Settings->last_module = Settings->module;
   Settings->module = USER_MODULE;
   SetModuleType();
@@ -3432,25 +3461,29 @@ void HandleHttpRequestBlinxConfigAnalog(void)
   TemplateGpios(&template_gp);
 
 
-  if(Webserver->hasArg(F("port1A"))){ // AO GPIO2 // sure : test for the led
-    String portString = Webserver->arg(F("port1A"));
-    Settings->my_gp.io[2] = name_to_id_type(portString) + 5;
+  if(port1AString != ""){ // AO GPIO2
+    Settings->my_gp.io[2] = name_to_id_type(port1AString) + 5;
   }
-  if(Webserver->hasArg(F("port1B"))){ // AO GPIO3
-    String portString = Webserver->arg(F("port1B"));
-    Settings->my_gp.io[3] = name_to_id_type(portString) + 6;
+  if(port1BString != ""){ // AO GPIO3
+    Settings->my_gp.io[3] = name_to_id_type(port1BString) + 6;
   }
-  if(Webserver->hasArg(F("port3A"))){ // AO GPIO4
-    String portString = Webserver->arg(F("port3A"));
-    Settings->my_gp.io[4] = name_to_id_type(portString) + 7;
+  if(port2AString != ""){ // AO GPIO4
+    Settings->my_gp.io[4] = name_to_id_type(port2AString) + 7;
   }
-  if(Webserver->hasArg(F("port3B"))){ // AO GPIO5
-    String portString = Webserver->arg(F("port3B"));
-    Settings->my_gp.io[5] = name_to_id_type(portString) + 8;
+  if(port2BString != ""){ // AO GPIO5
+    Settings->my_gp.io[5] = name_to_id_type(port2BString) + 8;
   }
 
-  WSContentBegin(200, CT_HTML);
-  WSContentEnd();
+
+  if(codeboot){
+    int size_image = 4; // for the time
+    blinx_encapsulation_data_begin(size_image);
+    blinx_send_data_sensor(false, PSTR("Done"));
+    blinx_encapsulation_data_end();
+  } else{
+    WSContentBegin(200, CT_HTML);
+    WSContentEnd();
+  }
 
   char command[32];
   snprintf_P(command, sizeof(command), PSTR(D_CMND_BACKLOG "0 " D_CMND_MODULE ";" D_CMND_GPIO));
@@ -3462,9 +3495,27 @@ void HandleHttpRequestBlinxConfigAnalog(void)
 
 void HandleHttpRequestBlinxRelay(void)
 {
-  String deviceString = Webserver->arg(F("device"));
-  int device;
+  bool codeboot = false;
+  if (Webserver->hasArg("?seqnum")){
+    codeboot = true;
+  }
 
+  String deviceString = Webserver->arg(F("device"));
+  String whatToDoString = Webserver->arg(F("action"));
+
+  String contentBase64 = Webserver->arg(F("content"));
+  if(contentBase64 != ""){
+    std::vector<StringArray2> elements = decodeContentlinx(contentBase64, 2);
+    for(auto element : elements){
+      if (element[0] == "device"){
+        deviceString = element[1];
+      } else if (element[0] == "action"){
+        whatToDoString = element[1];
+      }
+    }
+  }
+
+  int device;
   if(deviceString == "Port1A"){
     device = 5;
   } else if(deviceString == "Port1B"){
@@ -3477,17 +3528,31 @@ void HandleHttpRequestBlinxRelay(void)
     return;
   }
 
-  if (device < 1) { return; };
 
-  String whatToDoString = Webserver->arg(F("action"));
-  int whatToDo = std::stoi(whatToDoString.c_str());
-  
-  if (whatToDo < 0 || whatToDo > 4) { return; };
+  int whatToDo;
+  if (whatToDoString == "off"){
+    whatToDo = 0;
+  } else if (whatToDoString == "on"){
+    whatToDo = 1;
+  } else if (whatToDoString == "toggle"){
+    whatToDo = 2;
+  } else if (whatToDoString == "blink"){
+    whatToDo = 3;
+  } else{
+    return;
+  }
   
   ExecuteCommandPower(device, whatToDo, SRC_IGNORE);
 
-  WSContentBegin(200, CT_HTML);
-  WSContentEnd();
+  if(codeboot){
+    int size_image = 4; // for the time
+    blinx_encapsulation_data_begin(size_image);
+    blinx_send_data_sensor(false, PSTR("Done"));
+    blinx_encapsulation_data_end();
+  } else{
+    WSContentBegin(200, CT_HTML);
+    WSContentEnd();
+  }
 
   return;
 }
@@ -3495,44 +3560,75 @@ void HandleHttpRequestBlinxRelay(void)
 
 void HandleHttpRequestBlinxDisplay(void)
 {
+  bool codeboot = false;
+  if (Webserver->hasArg("?seqnum")){
+    codeboot = true;
+  }
+
+  String DisplayModeString = Webserver->arg(F("DisplayMode"));
+  String DisplayDimmerString = Webserver->arg(F("DisplayDimmer"));
+  String DisplaySizeString = Webserver->arg(F("DisplaySize"));
+  String DisplayRotateString = Webserver->arg(F("DisplayRotate"));
+  String DisplayTextString = Webserver->arg(F("DisplayText"));
+
+  String contentBase64 = Webserver->arg(F("content"));
+  if(contentBase64 != ""){
+    std::vector<StringArray2> elements = decodeContentlinx(contentBase64, 5);
+    for(auto element : elements){
+      if (element[0] == "DisplayMode"){
+        DisplayModeString = element[1];
+      } else if (element[0] == "DisplayDimmer"){
+        DisplayDimmerString = element[1];
+      } else if (element[0] == "DisplaySize"){
+        DisplaySizeString = element[1];
+      } else if (element[0] == "DisplayRotate"){
+        DisplayRotateString = element[1];
+      } else if (element[0] == "DisplayText"){
+        DisplayTextString = element[1];
+      }
+    }
+  }
+
   char svalue[32];                   // Command and number parameter
 
-  if(Webserver->hasArg(F("DisplayMode"))){
-    String DisplayModeString = Webserver->arg(F("DisplayMode"));
+  if(DisplayModeString != ""){
     int DisplayMode = std::stoi(DisplayModeString.c_str());
     if (DisplayMode < 0 || DisplayMode > 5){ return; }
     snprintf_P(svalue, sizeof(svalue), PSTR("DisplayMode %d"), DisplayMode);
     ExecuteWebCommand(svalue);
   }
-  if(Webserver->hasArg(F("DisplayDimmer"))){
-    String DisplayDimmerString = Webserver->arg(F("DisplayDimmer"));
+  if(DisplayDimmerString != ""){
     int DisplayDimmer = std::stoi(DisplayDimmerString.c_str());
     if (DisplayDimmer < 0 || DisplayDimmer > 100){ return; }
     snprintf_P(svalue, sizeof(svalue), PSTR("DisplayDimmer %d"), DisplayDimmer);
     ExecuteWebCommand(svalue);
   }
-  if(Webserver->hasArg(F("DisplaySize"))){
-    String DisplaySizeString = Webserver->arg(F("DisplaySize"));
+  if(DisplaySizeString != ""){
     int DisplaySize = std::stoi(DisplaySizeString.c_str());
     if (DisplaySize < 1 || DisplaySize > 4){ return; }
     snprintf_P(svalue, sizeof(svalue), PSTR("DisplaySize %d"), DisplaySize);
     ExecuteWebCommand(svalue);
   }
-  if(Webserver->hasArg(F("DisplayRotate"))){
-    String DisplayRotateString = Webserver->arg(F("DisplayRotate"));
+  if(DisplayRotateString != ""){
     int DisplayRotate = std::stoi(DisplayRotateString.c_str());
     if (DisplayRotate < 0 || DisplayRotate > 3){ return; }
     snprintf_P(svalue, sizeof(svalue), PSTR("DisplayRotate %d"), DisplayRotate);
     ExecuteWebCommand(svalue);
   }
-  if(Webserver->hasArg(F("DisplayText"))){
-    String DisplayTextString = Webserver->arg(F("DisplayText"));
+  if(DisplayTextString != ""){
     snprintf_P(svalue, sizeof(svalue), PSTR("DisplayText %s"), DisplayText);
     ExecuteWebCommand(svalue);
   }
 
-  WSContentBegin(200, CT_HTML);
-  WSContentEnd();
+  if(codeboot){
+    int size_image = 4; // for the time
+    blinx_encapsulation_data_begin(size_image);
+    blinx_send_data_sensor(false, PSTR("Done"));
+    blinx_encapsulation_data_end();
+  } else{
+    WSContentBegin(200, CT_HTML);
+    WSContentEnd();
+  }
 
   return;
 }
@@ -3541,6 +3637,13 @@ void HandleHttpRequestBlinxDisplay(void)
 void HandleHttpRequestBlinxLight(void)
 {
 #ifdef USE_LIGHT
+  bool codeboot = false;
+  if (Webserver->hasArg("?seqnum")){
+    codeboot = true;
+  }
+
+  // TODO : the content
+
   char tmp[8];                       // WebGetArg numbers only
   char svalue[32];                   // Command and number parameter
   char webindex[5];                  // WebGetArg name
@@ -3581,8 +3684,15 @@ void HandleHttpRequestBlinxLight(void)
     ExecuteWebCommand(svalue);
   }
 
-  WSContentBegin(200, CT_HTML);
-  WSContentEnd();
+  if(codeboot){
+    int size_image = 4; // for the time
+    blinx_encapsulation_data_begin(size_image);
+    blinx_send_data_sensor(false, PSTR("Done"));
+    blinx_encapsulation_data_end();
+  } else{
+    WSContentBegin(200, CT_HTML);
+    WSContentEnd();
+  }
 #endif // USE_LIGHT
 
   return;
@@ -3591,35 +3701,178 @@ void HandleHttpRequestBlinxLight(void)
 
 void HandleHttpRequestBlinxPWM(void)
 {
+  bool codeboot = false;
+  if (Webserver->hasArg("?seqnum")){
+    codeboot = true;
+  }
+
+  String indexPWM = Webserver->arg(F("index"));
+  String freqPWM = Webserver->arg(F("freq"));
+  String valuePWM = Webserver->arg(F("value"));
+  String phasePWM = Webserver->arg(F("phase"));
+
+  String contentBase64 = Webserver->arg(F("content"));
+  if(contentBase64 != ""){
+    std::vector<StringArray2> elements = decodeContentlinx(contentBase64, 4);
+    for(auto element : elements){
+      if (element[0] == "index"){
+        indexPWM = element[1];
+      } else if (element[0] == "freq"){
+        freqPWM = element[1];
+      } else if (element[0] == "value"){
+        valuePWM = element[1];
+      } else if (element[0] == "phase"){
+        phasePWM = element[1];
+      }
+    }
+  }
+
   char tmp[8];                       // WebGetArg numbers only
 
-  WebGetArg(PSTR("index"), tmp, sizeof(tmp));
-  if (strlen(tmp)) {
-    int index = std::stoi(tmp);
+  if (indexPWM != "") {
+    int index = std::stoi(indexPWM.c_str());
 
-    WebGetArg(PSTR("freq"), tmp, sizeof(tmp));
-    if (strlen(tmp)) {
+    if (freqPWM != "") {
       int32_t pin = Pin(GPIO_PWM1, index);
-      analogWriteFreq(std::stoi(tmp), pin);
+      analogWriteFreq(std::stoi(freqPWM.c_str()), pin);
     }
 
-    WebGetArg(PSTR("value"), tmp, sizeof(tmp));
-    if (strlen(tmp)) {
-      TasmotaGlobal.pwm_value[index] = std::stoi(tmp);
+    if (valuePWM != "") {
+      TasmotaGlobal.pwm_value[index] = std::stoi(valuePWM.c_str());
     }
-    WebGetArg(PSTR("phase"), tmp, sizeof(tmp));
-    if (strlen(tmp)) {
-      TasmotaGlobal.pwm_phase[index] = std::stoi(tmp);
+
+    if (phasePWM != "") {
+      TasmotaGlobal.pwm_phase[index] = std::stoi(phasePWM.c_str());
     }
+
     PwmApplyGPIO(false);
 
+    if(codeboot){
+      int size_image = 4; // for the time
+      blinx_encapsulation_data_begin(size_image);
+      blinx_send_data_sensor(false, PSTR("Done"));
+      blinx_encapsulation_data_end();
+    } else{
+      WSContentBegin(200, CT_HTML);
+      WSContentEnd();
+    }
+  }
+
+  return;
+}
+
+void HandleHttpRequestBlinxInfo(void)
+{
+  bool codeboot = false;
+  if (Webserver->hasArg("?seqnum")){
+    codeboot = true;
+  }
+
+
+
+  if(codeboot){
+    // we don't know the size
+  } else{
     WSContentBegin(200, CT_HTML);
+
+    blinx_send_data_sensor(false, PSTR("{"));
+    
+    // for input sensor : analog + i2c (xsns), the function don't have any importance, it is the index 0
+    blinx_send_data_sensor(false, PSTR("\"sensor\":\""));
+    blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_1s, 0);
+    blinx_send_data_sensor(false, PSTR("\""));
+
+    // for the on off
+    if (TasmotaGlobal.devices_present) {
+        blinx_send_data_sensor(false, PSTR(",\"DEVICE_on_off\":["));
+        for (uint32_t idx = 1; idx <= TasmotaGlobal.devices_present; idx++) {
+          blinx_send_data_sensor(false, PSTR("\"DEVICE_%d\""),idx);
+
+          if (idx < TasmotaGlobal.devices_present){
+            blinx_send_data_sensor(false, PSTR(","));
+          }
+        }
+        blinx_send_data_sensor(false, PSTR("]"));
+    }
+    
+
+    // for the pwm
+    uint32_t number_pwm = 0;
+    for (uint32_t i = 0; i < MAX_PWMS; i++) {
+      if (PinUsed(GPIO_PWM1, i)) {
+        number_pwm ++;
+      }
+    }
+    if (number_pwm > 0){
+      uint32_t see_pwm = 0;
+      
+      blinx_send_data_sensor(false, PSTR(",\"PWM\":["));
+      for (uint32_t i = 0; i < MAX_PWMS; i++) {
+        if (PinUsed(GPIO_PWM1, i)) {
+          see_pwm ++;
+          int32_t pin = Pin(GPIO_PWM1, i);
+          int32_t chan = analogGetChannel2(pin);
+
+          blinx_send_data_sensor(false, PSTR("\"PWM_%d\""), i);
+
+          if (see_pwm < number_pwm){
+            blinx_send_data_sensor(false, PSTR(","));
+          }
+        }
+      }
+      blinx_send_data_sensor(false, PSTR("]"));
+    }
+    
+    // Info wifi
+    blinx_send_data_sensor(false, PSTR(",\"" D_CMND_HOSTNAME "\":\"%s\",\""
+                          D_CMND_IPADDRESS "\":\"%_I\",\""
+                          D_JSON_MAC "\":\"%s\", \"Version\" : \"%s\"}"),
+                          TasmotaGlobal.hostname,
+                          (uint32_t)WiFi.localIP(),
+                          WiFi.macAddress().c_str(), TasmotaGlobal.version);
+
     WSContentEnd();
   }
 
   return;
 }
 
+void HandleHttpRequestBlinxName(void)
+{
+  bool codeboot = false;
+  if (Webserver->hasArg("?seqnum")){
+    codeboot = true;
+  }
+
+  String newName = Webserver->arg(F("name"));
+
+  String contentBase64 = Webserver->arg(F("content"));
+  if(contentBase64 != ""){
+    std::vector<StringArray2> elements = decodeContentlinx(contentBase64, 1);
+    for(auto element : elements){
+      if (element[0] == "name"){
+        newName = element[1];
+      }
+    }
+  }
+
+  if (newName != "") {
+
+    String cmnd = F(D_CMND_BACKLOG "0 ;" D_CMND_HOSTNAME " ");
+    cmnd += newName;
+
+    if(codeboot){
+      int size_image = 4; // for the time
+      blinx_encapsulation_data_begin(size_image);
+      blinx_send_data_sensor(false, PSTR("Done"));
+    } else{
+      WSContentBegin(200, CT_HTML);
+      WSContentEnd();
+    }
+
+    ExecuteWebCommand((char*)cmnd.c_str());
+  }
+}
 
 
 #include <Crc32.h>
@@ -3845,6 +4098,13 @@ void HandleNotFound(void)
 #ifndef NO_CAPTIVE_PORTAL
   if (CaptivePortal()) { return; }  // If captive portal redirect instead of displaying the error page.
 #endif  // NO_CAPTIVE_PORTAL
+
+#ifdef BLINX
+  String path = Webserver->uri();
+  if(path.endsWith(F(".csv"))){
+    HandleHttpRequestBlinxGet();
+  }
+#endif // BLINX
 
 #ifdef USE_EMULATION
 #ifdef USE_EMULATION_HUE
