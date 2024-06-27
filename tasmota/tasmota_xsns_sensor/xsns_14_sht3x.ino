@@ -171,8 +171,8 @@ void Sht3xGetData() {
       if (sht3x_count > 1) {
         snprintf_P(types, sizeof(types), PSTR("%s%c%02X"), sht3x_sensors[i].types, IndexSeparator(), sht3x_sensors[i].address);  // "SHT3X-0xXX"
       }
-      bufferSensor_Sht3x[0][i]->buffer->save(t);
-      bufferSensor_Sht3x[1][i]->buffer->save(h);
+      bufferSensor_Sht3x[0][i]->buffer[0].save(t);
+      bufferSensor_Sht3x[1][i]->buffer[0].save(h);
     }
   }
 }
@@ -244,7 +244,7 @@ void Sht3xShow_blinx(uint32_t phantomType, uint32_t phantomData, uint8_t ind, ui
     char types_blinx_sht3x[11];
     for (uint32_t i = 0; i < sht3x_count; i++) {
       if (bufferSensor_Sht3x[temp_humi][i] == nullptr) { continue; }
-      if (sht3x_sensors[i].types != type_sensor) { continue; }
+      if (*sht3x_sensors[i].types != type_sensor) { continue; }
 
       strlcpy(types_blinx_sht3x, sht3x_sensors[i].types, sizeof(types_blinx_sht3x));
 
@@ -253,7 +253,7 @@ void Sht3xShow_blinx(uint32_t phantomType, uint32_t phantomData, uint8_t ind, ui
   } else{
     for (uint32_t i = 0; i < sht3x_count; i++) {
       if (bufferSensor_Sht3x[temp_humi][i] == nullptr) { continue; }
-      if (sht3x_sensors[i].types != type_sensor) { continue; }
+      if (*sht3x_sensors[i].types != type_sensor) { continue; }
 
 
       blinx_send_data_sensor(false, PSTR(","));
@@ -343,12 +343,14 @@ int Xsns14_size_data(uint32_t phantomType = 0, uint32_t phantomData = 0){ // TOD
       return 5;
     }
   }
+  return 0;
 }
 
 int Xsns14_size_name(uint32_t phantomType = 0, uint32_t phantomData = 0){
-    if(phantomType == 2){
-      return 16;
-    }
+  if(phantomType == 2){
+    return 16;
+  }
+  return 0;
 }
 
 int Xsns14(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {

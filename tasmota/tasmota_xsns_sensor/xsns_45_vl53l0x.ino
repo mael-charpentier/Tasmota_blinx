@@ -169,7 +169,7 @@ void Vl53l0_global(uint8_t ind) {
             dist = 9999;
         }
         Vl53l0x_data[i].distance = dist;
-        Vl53l0x_data[i].bufferBlinx[ind].save(dist);
+        Vl53l0x_data[i].bufferBlinx->buffer[0].save(dist);
       } else{
         Vl53l0x_data[i].bufferBlinx->save(ind);
       }
@@ -301,9 +301,6 @@ bool Xsns45(uint32_t function) {
         case FUNC_EVERY_50_MSECOND:
             Vl53l0_global(0);
           break;
-        case FUNC_EVERY_SECOND:
-            Vl53l0_global(1);
-          break;
         case FUNC_EVERY_10_SECOND:
             Vl53l0_global(2);
           break;
@@ -323,6 +320,11 @@ bool Xsns45(uint32_t function) {
   #ifdef USE_DOMOTICZ
       case FUNC_EVERY_SECOND:
           Vl53l0Every_Second();
+
+#ifdef BLINX
+            Vl53l0_global(1);
+#endif // BLINX
+
           break;
   #endif  // USE_DOMOTICZ
         case FUNC_JSON_APPEND:
@@ -357,10 +359,10 @@ int Xsns45(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint
   else if (VL53L0X_detected) {
     switch (function) {
         case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
-          return Xsns14_size_data(phantomType, phantomData);
+          return Xsns45_size_data(phantomType, phantomData);
         case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
-          return Xsns14_size_name(phantomType, phantomData);
-        case FUNC_WEB_SENSOR_BLINX_50Ms,:
+          return Xsns45_size_name(phantomType, phantomData);
+        case FUNC_WEB_SENSOR_BLINX_50Ms:
           Vl53l0Show_blinx(phantomType, phantomData, 0, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_1s:
