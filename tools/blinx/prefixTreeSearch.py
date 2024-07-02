@@ -71,12 +71,13 @@ def generate_cpp_functions(prefix_dict):
 # element in the dict : {"name_sensor" : ["id_sensor", type_sensor, type_data], ...}, if only 1 type put 0, if only 1 data put 0
 
 prefix_dict = {
+    "counter": ["01",0, 0],
+    "analog_1A": ["02",1, 0], "analog_1B": ["02",2, 0],
+    "analog_2A": ["02",3, 0], "analog_2B": ["02",4, 0],
     "sht3x_temp": ["14",1, 1], "sht3x_humi": ["14",1, 2],
     "sht3c_temp": ["14",2, 1], "sht3c_humi": ["14",2, 2],
     "sht4x_temp": ["14",3, 1], "sht4x_humi": ["14",3, 2],
     "vl53l0x": ["45",0, 0],
-    "analog_1A": ["02",1, 0], "analog_1B": ["02",2, 0],
-    "analog_2A": ["02",3, 0], "analog_2B": ["02",4, 0],
 }
 cpp_code = generate_cpp_functions(prefix_dict)
 print(cpp_code)
