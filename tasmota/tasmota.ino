@@ -123,7 +123,7 @@
 #define SIZE_BUFFER_10M 30
 #define SIZE_BUFFER_1H 30
 
-using FunctionType = void (*)(uint16_t);
+using FunctionType = void (*)(uint16_t, int);
 
 struct bufferTime {
   uint16_t* buffer = nullptr;
@@ -151,11 +151,11 @@ struct bufferTime {
       }
   }
 
-  void getData(uint8_t ind, FunctionType func){
+  void getData(uint8_t ind, FunctionType func, int argSupl = 0){
       uint8_t max_ind = size;
       uint8_t index_data = (index+ind)%max_ind;
 
-      (*func)(buffer[index_data]);
+      (*func)(buffer[index_data], argSupl);
   }
 };
 
@@ -193,12 +193,12 @@ struct bufferSensor {
       }
   }
 
-  void mapData(uint8_t ind, FunctionType func){
+  void mapData(uint8_t ind, FunctionType func, int argSupl = 0){
       uint8_t max_ind = buffer[ind].size;
       uint8_t index = (buffer[ind].index+1)%max_ind;
 
       for (uint32_t y = 0; y < max_ind; y++) {
-        (*func)(buffer[ind].buffer[index]);
+        (*func)(buffer[ind].buffer[index], argSupl);
 
         index = (index+1);
         if(index == max_ind){

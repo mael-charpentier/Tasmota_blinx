@@ -18,12 +18,12 @@ def generate_cpp_functions(prefix_dict):
             cpp_code += f"    else if (input[{len(prefix)}] == '{char}'){{\n"
             match = False
             for key in matching_keys:
-                if len(key) == len(prefix) + 1:
-                    remaining_dict = {k: v for k, v in prefix_dict.items() if k.startswith(prefix + char)}
+                remaining_dict_t = {k: v for k, v in prefix_dict.items() if k.startswith(prefix + char)}
+                if len(key) <= len(prefix) + 1:
                     cpp_code += f"        if (l == {len(key)}){{\n"
                     cpp_code += f"            return Xsns{remaining_dict[key][0]}(function, index_csv, {remaining_dict[key][1]}, {remaining_dict[key][2]});\n" # TODO phantom
                     cpp_code += f"        }} else {{\n"
-                    if len(remaining_dict) > 1:
+                    if len(remaining_dict_t) > 1:
                         next_func_name = get_function_name(prefix + char)
                         cpp_code += f"            return {next_func_name}(input, l, function, index_csv);\n"
                     else:
@@ -75,6 +75,8 @@ prefix_dict = {
     "sht3c_temp": ["14",2, 1], "sht3c_humi": ["14",2, 2],
     "sht4x_temp": ["14",3, 1], "sht4x_humi": ["14",3, 2],
     "vl53l0x": ["45",0, 0],
+    "analog_1A": ["02",1, 0], "analog_1B": ["02",2, 0],
+    "analog_2A": ["02",3, 0], "analog_2B": ["02",4, 0],
 }
 cpp_code = generate_cpp_functions(prefix_dict)
 print(cpp_code)
