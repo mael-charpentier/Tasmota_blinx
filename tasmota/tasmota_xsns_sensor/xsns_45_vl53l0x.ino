@@ -178,7 +178,7 @@ void Vl53l0_global(uint8_t ind) {
   }
 }
 
-void sendFunction_Vl53l0(uint16_t val){
+void sendFunction_Vl53l0(uint16_t val, int _){
     float distance = (val == 9999) ? NAN : (float)val / 10; // cm
     blinx_send_data_sensor(true, PSTR("%1_f,"), &distance);
 }
@@ -194,7 +194,7 @@ void Vl53l0Show_blinx(uint32_t phantomType, uint32_t phantomData, uint8_t ind, u
     for (uint32_t i = 0; i < VL53LXX_MAX_SENSORS; i++) {
       if ((PinUsed(GPIO_VL53LXX_XSHUT1, i) || (!VL53L0X_xshut)) && (Vl53l0x_data[i].bufferBlinx != nullptr)) {
         blinx_send_data_sensor(true, PSTR(","));
-        Vl53l0x_data[i].bufferBlinx->buffer[ind].getData(index_csv, &sendFunction_Vl53l0);
+        Vl53l0x_data[i].bufferBlinx->buffer[ind].getData(index_csv, &sendFunction_Vl53l0, 0);
       }
     }
   }
