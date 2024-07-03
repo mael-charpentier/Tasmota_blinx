@@ -10,6 +10,9 @@ int blinxFindSensor(String input, size_t l, uint32_t function, uint32_t index_cs
     else if (input[0] == 'c'){
         return blinxFindSensor_C(input, l, function, index_csv);
     }
+    else if (input[0] == 'd'){
+        return blinxFindSensor_D(input, l, function, index_csv);
+    }
     else if (input[0] == 's'){
         return blinxFindSensor_S(input, l, function, index_csv);
     }
@@ -161,6 +164,98 @@ int blinxFindSensor_COUNTE(String input, size_t l, uint32_t function, uint32_t i
     else if (input[6] == 'r'){
         if (l == 7){
             return Xsns01(function, index_csv, 0, 0);
+        } else {
+            return -1;
+        }
+    }
+    return -1;
+}
+
+int blinxFindSensor_D(String input, size_t l, uint32_t function, uint32_t index_csv){
+    if (l == 1) { return -1; }
+    else if (input[1] == 's'){
+        return blinxFindSensor_DS(input, l, function, index_csv);
+    }
+    return -1;
+}
+
+int blinxFindSensor_DS(String input, size_t l, uint32_t function, uint32_t index_csv){
+    if (l == 2) { return -1; }
+    else if (input[2] == '1'){
+        return blinxFindSensor_DS1(input, l, function, index_csv);
+    }
+    return -1;
+}
+
+int blinxFindSensor_DS1(String input, size_t l, uint32_t function, uint32_t index_csv){
+    if (l == 3) { return -1; }
+    else if (input[3] == '8'){
+        return blinxFindSensor_DS18(input, l, function, index_csv);
+    }
+    return -1;
+}
+
+int blinxFindSensor_DS18(String input, size_t l, uint32_t function, uint32_t index_csv){
+    if (l == 4) { return -1; }
+    else if (input[4] == 'x'){
+        return blinxFindSensor_DS18X(input, l, function, index_csv);
+    }
+    return -1;
+}
+
+int blinxFindSensor_DS18X(String input, size_t l, uint32_t function, uint32_t index_csv){
+    if (l == 5) { return -1; }
+    else if (input[5] == '2'){
+        return blinxFindSensor_DS18X2(input, l, function, index_csv);
+    }
+    return -1;
+}
+
+int blinxFindSensor_DS18X2(String input, size_t l, uint32_t function, uint32_t index_csv){
+    if (l == 6) { return -1; }
+    else if (input[6] == '0'){
+        return blinxFindSensor_DS18X20(input, l, function, index_csv);
+    }
+    return -1;
+}
+
+int blinxFindSensor_DS18X20(String input, size_t l, uint32_t function, uint32_t index_csv){
+    if (l == 7) { return -1; }
+    else if (input[7] == '_'){
+        return blinxFindSensor_DS18X20_(input, l, function, index_csv);
+    }
+    return -1;
+}
+
+int blinxFindSensor_DS18X20_(String input, size_t l, uint32_t function, uint32_t index_csv){
+    if (l == 8) { return -1; }
+    else if (input[8] == 't'){
+        return blinxFindSensor_DS18X20_T(input, l, function, index_csv);
+    }
+    return -1;
+}
+
+int blinxFindSensor_DS18X20_T(String input, size_t l, uint32_t function, uint32_t index_csv){
+    if (l == 9) { return -1; }
+    else if (input[9] == 'e'){
+        return blinxFindSensor_DS18X20_TE(input, l, function, index_csv);
+    }
+    return -1;
+}
+
+int blinxFindSensor_DS18X20_TE(String input, size_t l, uint32_t function, uint32_t index_csv){
+    if (l == 10) { return -1; }
+    else if (input[10] == 'm'){
+        return blinxFindSensor_DS18X20_TEM(input, l, function, index_csv);
+    }
+    return -1;
+}
+
+int blinxFindSensor_DS18X20_TEM(String input, size_t l, uint32_t function, uint32_t index_csv){
+    if (l == 11) { return -1; }
+    else if (input[11] == 'p'){
+        if (l == 12){
+            return Xsns05(function, index_csv, 0, 0);
         } else {
             return -1;
         }
@@ -501,6 +596,7 @@ int blinxFindSensorAll(uint32_t function, uint32_t index_csv){
    sum += Xsns02(function, index_csv, 2, 0) + 1;
    sum += Xsns02(function, index_csv, 3, 0) + 1;
    sum += Xsns02(function, index_csv, 4, 0) + 1;
+   sum += Xsns05(function, index_csv, 0, 0) + 1;
    sum += Xsns14(function, index_csv, 1, 1) + 1;
    sum += Xsns14(function, index_csv, 1, 2) + 1;
    sum += Xsns14(function, index_csv, 2, 1) + 1;

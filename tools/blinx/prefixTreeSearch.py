@@ -74,6 +74,7 @@ prefix_dict = {
     "counter": ["01",0, 0],
     "analog_1A": ["02",1, 0], "analog_1B": ["02",2, 0],
     "analog_2A": ["02",3, 0], "analog_2B": ["02",4, 0],
+    "ds18x20_temp": ["05",0, 0],
     "sht3x_temp": ["14",1, 1], "sht3x_humi": ["14",1, 2],
     "sht3c_temp": ["14",2, 1], "sht3c_humi": ["14",2, 2],
     "sht4x_temp": ["14",3, 1], "sht4x_humi": ["14",3, 2],
