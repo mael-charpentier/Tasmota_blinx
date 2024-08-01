@@ -344,7 +344,7 @@ bool Xsns14(uint32_t function) {
   else if (sht3x_count) {
     switch (function) {
   #ifdef BLINX
-        case FUNC_EVERY_SECOND:
+        case FUNC_EVERY_1_SECOND_TIMER:
           Sht3xGeneral(0);
           break;
         case FUNC_EVERY_10_SECOND:

@@ -1154,3 +1154,61 @@ bool XsnsCall(uint32_t function) {
 
   return result;
 }
+
+
+
+
+#ifdef BLINX
+
+
+void XsnsCall_50MS_timer_blinx(TimerHandle_t xTimer){
+  int begin_time = millis();
+  while(1){
+    //int time1 = xTaskGetTickCount();
+    infoConfigBlinx.number50ms++;
+
+    if(infoConfigBlinx.number50ms == 20){
+      infoConfigBlinx.updateTime(2, millis());
+    } else {
+      infoConfigBlinx.updateTime(1, millis());
+    }
+
+    XsnsCall(FUNC_EVERY_50_MSECOND_TIMER);
+
+    if(infoConfigBlinx.number50ms == 20){
+      XsnsCall(FUNC_EVERY_1_SECOND_TIMER);
+      infoConfigBlinx.number50ms = 0;
+    }
+
+    XsnsCall(FUNC_PREP_DATA);
+
+    begin_time += 50;
+    int diff = begin_time - millis(); //50 - portTICK_RATE_MS*(xTaskGetTickCount() - time1) - 1;
+    if(diff > 0){
+      vTaskDelay(diff / portTICK_RATE_MS);
+    }
+
+    //unsigned int temp1 = uxTaskGetStackHighWaterMark(nullptr);
+    //Serial.print("task1 uxTaskGetStackHighWaterMark="); Serial.println(temp1); // = 2800, for 4096
+  }
+}
+
+TaskHandle_t XsnsCall_50MS_timer_blinx_handle = NULL;
+void begin_time_50ms_blinx(){
+  //TaskHandle_t xHandle = NULL;
+  //res = xTaskCreatePinnedToCore(XsnsCall_50MS_timer_blinx, "50msBlinx", stack, NULL, 1, xHandle, 1);
+  /*TimerHandle_t xAutoReloadTimer;
+  xAutoReloadTimer = xTimerCreate("50msBlinx",        // Name of the timer
+                                  pdMS_TO_TICKS(50),       // The period of the timer specified in ticks (500)
+                                  pdTRUE,                   // The timer will auto-reload when it expires
+                                  0,                        // Identifier of the timer
+                                  XsnsCall_50MS_timer_blinx); // Callback function
+  xTimerStart(xAutoReloadTimer, 0);*/
+  xTaskCreate(XsnsCall_50MS_timer_blinx, "XsnsCall_50MS_timer_blinx", 4096 - 2800 + 2000
+  , NULL, 10, &XsnsCall_50MS_timer_blinx_handle);
+
+}
+
+
+#endif // BLINX
+

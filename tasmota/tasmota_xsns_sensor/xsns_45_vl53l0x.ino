@@ -298,9 +298,12 @@ bool Xsns45(uint32_t function) {
   else if (VL53L0X_detected) {
       switch (function) {
 #ifdef BLINX
-        case FUNC_EVERY_50_MSECOND:
-            Vl53l0_global(0);
+        case FUNC_EVERY_50_MSECOND_TIMER:
+            Vl53l0_global_50ms();
           break;
+        case FUNC_EVERY_1_SECOND_TIMER:
+            Vl53l0_global(1);
+            break;
         case FUNC_EVERY_10_SECOND:
             Vl53l0_global(2);
           break;
@@ -320,11 +323,6 @@ bool Xsns45(uint32_t function) {
   #ifdef USE_DOMOTICZ
       case FUNC_EVERY_SECOND:
           Vl53l0Every_Second();
-
-#ifdef BLINX
-            Vl53l0_global(1);
-#endif // BLINX
-
           break;
   #endif  // USE_DOMOTICZ
         case FUNC_JSON_APPEND:

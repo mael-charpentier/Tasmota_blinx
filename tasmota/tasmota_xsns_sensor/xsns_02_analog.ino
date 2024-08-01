@@ -1184,6 +1184,9 @@ bool Xsns02(uint32_t function) {
       if (Adcs.present) {
         switch (function) {
   #ifdef BLINX
+        case FUNC_EVERY_1_SECOND_TIMER:
+          AdcGetBlinx(0);
+          break;
         case FUNC_EVERY_10_SECOND:
           AdcGetBlinx(1);
           break;
@@ -1204,9 +1207,6 @@ bool Xsns02(uint32_t function) {
 #endif  // USE_RULES
           case FUNC_EVERY_SECOND:
             AdcEverySecond();
-  #ifdef BLINX
-          AdcGetBlinx(0);
-  #endif  // BLINX
             break;
           case FUNC_JSON_APPEND:
             AdcShow(1);

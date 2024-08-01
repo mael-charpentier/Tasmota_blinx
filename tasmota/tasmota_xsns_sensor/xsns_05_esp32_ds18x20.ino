@@ -593,6 +593,9 @@ bool Xsns05(uint32_t function) {
   if (PinUsed(GPIO_DSB, GPIO_ANY)) {
     switch (function) {
   #ifdef BLINX
+        case FUNC_EVERY_1_SECOND_TIMER:
+          Ds18x20GetBlinx(0);
+          break;
         case FUNC_EVERY_10_SECOND:
           Ds18x20GetBlinx(1);
           break;
@@ -611,9 +614,6 @@ bool Xsns05(uint32_t function) {
         break;
       case FUNC_EVERY_SECOND:
         Ds18x20EverySecond();
-  #ifdef BLINX
-          Ds18x20GetBlinx(0);
-  #endif  // BLINX
         break;
       case FUNC_JSON_APPEND:
         Ds18x20Show(1);

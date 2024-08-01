@@ -375,6 +375,9 @@ bool Xsns01(uint32_t function)
   if (Counter.any_counter) {
     switch (function) {
   #ifdef BLINX
+        case FUNC_EVERY_1_SECOND_TIMER:
+          CounterGetBlinx(0);
+          break;
         case FUNC_EVERY_10_SECOND:
           CounterGetBlinx(1);
           break;
@@ -390,9 +393,6 @@ bool Xsns01(uint32_t function)
   #endif  // BLINX
       case FUNC_EVERY_SECOND:
         CounterEverySecond();
-  #ifdef BLINX
-          CounterGetBlinx(0);
-  #endif  // BLINX
         break;
       case FUNC_JSON_APPEND:
         CounterShow(1);
