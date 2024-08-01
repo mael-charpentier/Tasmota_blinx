@@ -587,7 +587,6 @@ const WebServerDispatch_t WebServerDispatch[] PROGMEM = {
   { "bc", HTTP_ANY, HandleHttpRequestBlinxConfigAnalog }, // config analog port, using ModuleSaveSettings
   { "br", HTTP_ANY, HandleHttpRequestBlinxRelay }, // for the relay, led, ...
   { "bd", HTTP_ANY, HandleHttpRequestBlinxDisplay }, // for display
-  { "bl", HTTP_ANY, HandleHttpRequestBlinxLight }, // for light
   { "bp", HTTP_ANY, HandleHttpRequestBlinxPWM }, // for motor, buzzer
   { "bi", HTTP_ANY, HandleHttpRequestBlinxInfo }, // to get info
   { "bn", HTTP_ANY, HandleHttpRequestBlinxName }, // to change name
@@ -3629,71 +3628,6 @@ void HandleHttpRequestBlinxDisplay(void)
     WSContentBegin(200, CT_HTML);
     WSContentEnd();
   }
-
-  return;
-}
-
-
-void HandleHttpRequestBlinxLight(void)
-{
-#ifdef USE_LIGHT
-  bool codeboot = false;
-  if (Webserver->hasArg("?seqnum")){
-    codeboot = true;
-  }
-
-  // TODO : the content
-
-  char tmp[8];                       // WebGetArg numbers only
-  char svalue[32];                   // Command and number parameter
-  char webindex[5];                  // WebGetArg name
-
-  WebGetArg(PSTR("d0"), tmp, sizeof(tmp));  // 0 - 100 Dimmer value
-  if (strlen(tmp)) {
-    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_DIMMER " %s"), tmp);
-    ExecuteWebCommand(svalue);
-  }
-  WebGetArg(PSTR("w0"), tmp, sizeof(tmp));  // 0 - 100 White value
-  if (strlen(tmp)) {
-    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_WHITE " %s"), tmp);
-    ExecuteWebCommand(svalue);
-  }
-  uint32_t light_device = LightDevice();  // Channel number offset
-  uint32_t pwm_channels = (TasmotaGlobal.light_type & 7) > LST_MAX ? LST_MAX : (TasmotaGlobal.light_type & 7);
-  for (uint32_t j = 0; j < pwm_channels; j++) {
-    snprintf_P(webindex, sizeof(webindex), PSTR("e%d"), j +1);
-    WebGetArg(webindex, tmp, sizeof(tmp));  // 0 - 100 percent
-    if (strlen(tmp)) {
-      snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_CHANNEL "%d %s"), j +light_device, tmp);
-      ExecuteWebCommand(svalue);
-    }
-  }
-  WebGetArg(PSTR("t0"), tmp, sizeof(tmp));  // 153 - 500 Color temperature
-  if (strlen(tmp)) {
-    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_COLORTEMPERATURE " %s"), tmp);
-    ExecuteWebCommand(svalue);
-  }
-  WebGetArg(PSTR("h0"), tmp, sizeof(tmp));  // 0 - 359 Hue value
-  if (strlen(tmp)) {
-    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_HSBCOLOR  "1 %s"), tmp);
-    ExecuteWebCommand(svalue);
-  }
-  WebGetArg(PSTR("n0"), tmp, sizeof(tmp));  // 0 - 99 Saturation value
-  if (strlen(tmp)) {
-    snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_HSBCOLOR  "2 %s"), tmp);
-    ExecuteWebCommand(svalue);
-  }
-
-  if(codeboot){
-    int size_image = 4; // for the time
-    blinx_encapsulation_data_begin(size_image);
-    blinx_send_data_sensor(false, PSTR("Done"));
-    blinx_encapsulation_data_end();
-  } else{
-    WSContentBegin(200, CT_HTML);
-    WSContentEnd();
-  }
-#endif // USE_LIGHT
 
   return;
 }
