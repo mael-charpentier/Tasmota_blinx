@@ -123,7 +123,10 @@
 #define SIZE_BUFFER_10M 30
 #define SIZE_BUFFER_1H 30
 
-using FunctionType = void (*)(uint16_t, int);
+struct idDeviceBlinx { // This structure is named "myDataType"
+  int id;
+  String name;
+};
 
 struct bufferTime {
   uint16_t* buffer = nullptr;

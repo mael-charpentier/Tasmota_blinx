@@ -3345,41 +3345,35 @@ void HandleHttpRequestBlinxGet(void)
     }
   }
 
-  uint32_t function, size_buffer;
-  timeBlinx infoTime;
+  uint32_t function, size_buffer, infoInd;
   if (time_ask == "50ms") {
     function = FUNC_WEB_SENSOR_BLINX_50Ms;
     size_buffer = SIZE_BUFFER_50MS;
-    infoTime.millis_second = 50;
-    infoTime.ind = 0;
+    infoInd = 0;
   } else if (time_ask == "1s") {
     function = FUNC_WEB_SENSOR_BLINX_1s;
     size_buffer = SIZE_BUFFER_1S;
-    infoTime.millis_second = 1000;
-    infoTime.ind = 1;
+    infoInd = 1;
   } else if (time_ask == "10s") {
     function = FUNC_WEB_SENSOR_BLINX_10s;
     size_buffer = SIZE_BUFFER_10S;
-    infoTime.millis_second = 1000 * 10;
-    infoTime.ind = 2;
+    infoInd = 2;
   } else if (time_ask == "1m") {
     function = FUNC_WEB_SENSOR_BLINX_1m;
     size_buffer = SIZE_BUFFER_1M;
-    infoTime.millis_second = 1000 * 60;
-    infoTime.ind = 3;
+    infoInd = 3;
   } else if (time_ask == "10m") {
     function = FUNC_WEB_SENSOR_BLINX_10m;
     size_buffer = SIZE_BUFFER_10M;
-    infoTime.millis_second = 1000 * 60 * 10;
-    infoTime.ind = 4;
+    infoInd = 4;
   } else if (time_ask == "1h") {
     function = FUNC_WEB_SENSOR_BLINX_1h;
     size_buffer = SIZE_BUFFER_1H;
-    infoTime.millis_second = 1000 * 60 * 60;
-    infoTime.ind = 5;
+    infoInd = 5;
   } else {
     return;
   }
+  infoConfigBlinx.beginReadData(infoInd);
 
     WSContentBegin(200, CT_HTML); // to get csv : CT_APP_CSV
     WSContentFlush();             // Flush chunk buffer (normalyy there will be nothing, because we didn't use it)
@@ -3443,22 +3437,12 @@ void HandleHttpRequestBlinxGet(void)
   }
 
   WSContentEnd();
+  infoConfigBlinx.endReadData();
 
   return;
 }
 
 
-uint32_t name_to_id_type(String input_name){
-  char stemp[30];
-  for (uint32_t i = 0; i < nitems(kGpioNiceList); i++) {
-    uint32_t ridx = pgm_read_word(kGpioNiceList + i) & 0xFFE0;
-    uint32_t midx = BGPIO(ridx);
-    if (String(GetTextIndexed(stemp, sizeof(stemp), midx, kSensorNames)) == input_name){
-      return ridx;
-    }
-  }
-  return -100;
-}
 
 void HandleHttpRequestBlinxConfigAnalog(void)
 {
@@ -3759,8 +3743,7 @@ void HandleHttpRequestBlinxPWM(int index, String freqPWM, String valuePWM, Strin
     if (phasePWM != "") {
       TasmotaGlobal.pwm_phase[index] = std::stoi(phasePWM.c_str());
     }
-
-    PwmApplyGPIO(false);
+  PwmApplyGPIO(true); 
 
       WSContentBegin(200, CT_HTML);
       WSContentEnd();
