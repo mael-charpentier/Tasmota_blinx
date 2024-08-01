@@ -175,6 +175,9 @@ struct {
   uint8_t pin = 0;
   float mq_samples[ANALOG_MQ_SAMPLES];
   int indexOfPointer = -1;
+#ifdef BLINX
+  bufferSensor* bufferBlinx = nullptr;
+#endif // BLINX
 } Adc[MAX_ADCS];
 
 #ifdef ESP8266
@@ -265,6 +268,11 @@ void AdcAttach(uint32_t pin, uint8_t type) {
   if (adcAttachPin(Adc[Adcs.present].pin)) {
     Adc[Adcs.present].type = type;
 //    analogSetPinAttenuation(Adc[Adcs.present].pin, ADC_11db);  // Default
+
+#ifdef BLINX
+    Adc[Adcs.present].bufferBlinx = initBufferSensor(5);
+#endif // BLINX
+
     Adcs.present++;
   }
 }
@@ -755,6 +763,272 @@ void AdcShow(bool json) {
   }
 }
 
+
+
+#ifdef BLINX
+
+String getTextFromIndexADC_blinx(int idx) {
+  String listText[4] = {"1A", "1B", "2A", "2B"};
+  return listText[Adc[idx].pin-2];
+}
+
+int getIndexFromPinADC_blinx(int pin) {
+  for (uint32_t idx = 0; idx < Adcs.present; idx++) {
+    if (Adc[idx].pin == pin+1){
+      return idx;
+    }
+  }
+  return -1;
+}
+
+void AdcGetBlinxMin(void) {
+  for (uint32_t idx = 0; idx < Adcs.present; idx++) {
+    switch (Adc[idx].type) {
+      case ADC_INPUT: {
+        Adc[idx].bufferBlinx->buffer[0].save(AdcRead(Adc[idx].pin, 5));
+        break;
+      }
+      case ADC_TEMP: {
+        Adc[idx].bufferBlinx->buffer[0].save(AdcRead(Adc[idx].pin, 2));
+        break;
+      }
+      case ADC_LIGHT: {
+        Adc[idx].bufferBlinx->buffer[0].save(AdcRead(Adc[idx].pin, 2));
+        break;
+      }
+      case ADC_RANGE: {
+        Adc[idx].bufferBlinx->buffer[0].save(AdcRead(Adc[idx].pin, 5));
+        break;
+      }
+      case ADC_CT_POWER: {
+        uint16_t analog = 0;
+        uint16_t analog_min = ANALOG_RANGE;
+        uint16_t analog_max = 0;
+
+        if (0 == Adc[idx].param1) {
+          unsigned long tstart=millis();
+          while (millis()-tstart < 35) {
+            analog = analogRead(Adc[idx].pin);
+            if (analog < analog_min) {
+              analog_min = analog;
+            }
+            if (analog > analog_max) {
+              analog_max = analog;
+            }
+          }
+          analog = analog_max-analog_min;
+        }
+        else {
+          analog = AdcRead(Adc[idx].pin, 5);
+        }
+
+        Adc[idx].bufferBlinx->buffer[0].save(analog);
+        break;
+      }
+      case ADC_JOY: {
+        Adc[idx].bufferBlinx->buffer[0].save(AdcRead(Adc[idx].pin, 1));
+        break;
+      }
+      case ADC_PH: {
+        Adc[idx].bufferBlinx->buffer[0].save(AdcRead(Adc[idx].pin, 2));
+        break;
+      }
+      case ADC_MQ: {
+        Adc[idx].bufferBlinx->buffer[0].save(AdcRead(Adc[idx].pin, 2));
+        break;
+      }
+    }
+  }
+}
+
+
+void AdcGetBlinx(uint8_t ind) {
+  if(ind == 0){
+    AdcGetBlinxMin();
+    return;
+  }
+
+  for (uint32_t idx = 0; idx < Adcs.present; idx++) {
+    if (Adc[idx].bufferBlinx == nullptr) {
+      Adc[idx].bufferBlinx = initBufferSensor(5);
+      Adc[idx].bufferBlinx->buffer[ind].save(0);
+    } else{
+      Adc[idx].bufferBlinx->save(ind);
+    }
+  }
+}
+
+
+// TODO
+// keep the index
+
+void sendFunction_analog_input(uint16_t val, int idx){
+  blinx_send_data_sensor(true, HTTP_SNS_ANALOG, "", 0, val);
+}
+void sendFunction_analog_temp(uint16_t adc, int idx){
+  double Rt;
+#ifdef ESP8266
+  if (Adc[idx].param4) { // Alternate mode
+    Rt = (double)Adc[idx].param1 * (ANALOG_RANGE * ANALOG_V33 - (double)adc) / (double)adc;
+  } else {
+    Rt = (double)Adc[idx].param1 * (double)adc / (ANALOG_RANGE * ANALOG_V33 - (double)adc);
+  }
+#else
+  if (Adc[idx].param4) { // Alternate mode
+    Rt = (double)Adc[idx].param1 * (ANALOG_RANGE - (double)adc) / (double)adc;
+  } else {
+    Rt = (double)Adc[idx].param1 * (double)adc / (ANALOG_RANGE - (double)adc);
+  }
+#endif
+  double BC = (double)Adc[idx].param3 / 10000;                                      // Shelly param3 = 3350 (ANALOG_NTC_B_COEFFICIENT)
+  double T = BC / (BC / ANALOG_T0 + TaylorLog(Rt / (double)Adc[idx].param2));       // Shelly param2 = 10000 (ANALOG_NTC_RESISTANCE)
+
+  float t = ((float)(ConvertTemp(TO_CELSIUS(T)) * 175) / 65535.0) - 45.0;
+  t = ConvertTemp(t);
+  blinx_send_data_sensor(true, PSTR("%*_f" D_UNIT_DEGREE "%c"), Settings->flag2.temperature_resolution, &t, TempUnit());
+}
+void sendFunction_analog_light(uint16_t adc, int idx){
+  double resistorVoltage = ((double)adc / ANALOG_RANGE) * ANALOG_V33;
+  double ldrVoltage = ANALOG_V33 - resistorVoltage;
+  double ldrResistance = ldrVoltage / resistorVoltage * (double)Adc[idx].param1;
+  double ldrLux = (double)Adc[idx].param2 * FastPrecisePow(ldrResistance, (double)Adc[idx].param3 / 10000);
+
+  blinx_send_data_sensor(true, HTTP_SNS_ILLUMINANCE, "", (uint16_t)ldrLux);
+}
+void sendFunction_analog_range(uint16_t adc, int idx){
+  double adcrange = ( ((double)Adc[idx].param2 - (double)adc) / ( ((double)Adc[idx].param2 - (double)Adc[idx].param1)) * ((double)Adc[idx].param3 - (double)Adc[idx].param4) + (double)Adc[idx].param4 );
+  char range_chr[FLOATSZ];
+  dtostrfd((float)adcrange, Settings->flag2.frequency_resolution, range_chr);
+  
+  blinx_send_data_sensor(true, HTTP_SNS_RANGE_CHR, "", range_chr);
+}
+void sendFunction_analog_power(uint16_t analog, int idx){
+  float current;
+  if (0 == Adc[idx].param1) {
+    current = (float)(analog) * ((float)(Adc[idx].param2) / 100000);
+    if (current < (((float)Adc[idx].param4) / 10000.0))
+        current = 0.0;
+  }
+  else {
+    if (analog > Adc[idx].param1) {
+     current = ((float)(analog) - (float)Adc[idx].param1) * ((float)(Adc[idx].param2) / 100000);
+    }
+    else {
+      current = 0;
+    }
+  }
+  float voltage = (float)(Adc[idx].param3) / 10;
+  
+  char voltage_chr[FLOATSZ];
+  dtostrfd(voltage, Settings->flag2.voltage_resolution, voltage_chr);
+  char current_chr[FLOATSZ];
+  dtostrfd(current, Settings->flag2.current_resolution, current_chr);
+  char power_chr[FLOATSZ];
+  dtostrfd(voltage * current, Settings->flag2.wattage_resolution, power_chr);
+
+  blinx_send_data_sensor(true, HTTP_SNS_VOLTAGE, voltage_chr);
+  blinx_send_data_sensor(true, HTTP_SNS_CURRENT, current_chr);
+  blinx_send_data_sensor(true, HTTP_SNS_POWER, power_chr);
+
+  // TODO : save energy in buffer
+  /*
+  float power = current * (float)(Adc[idx].param3) / 10;
+  uint32_t current_millis = millis();
+  Adc[idx].energy = Adc[idx].energy + ((power * (current_millis - Adc[idx].previous_millis)) / 3600000000);
+  char energy_chr[FLOATSZ];
+  dtostrfd(Adc[idx].energy, Settings->flag2.energy_resolution, energy_chr);
+  blinx_send_data_sensor(true, HTTP_SNS_ENERGY_TOTAL, energy_chr);
+  */
+}
+void sendFunction_analog_joy(uint16_t val, int idx){
+  uint16_t value = val / Adc[idx].param1;
+  blinx_send_data_sensor(false, PSTR("%d"), val);
+}
+void sendFunction_analog_ph(uint16_t adc, int idx){
+  float y1 = (float)Adc[idx].param1 / ANALOG_PH_DECIMAL_MULTIPLIER;
+  int32_t x1 = Adc[idx].param2;
+  float y2 = (float)Adc[idx].param3 / ANALOG_PH_DECIMAL_MULTIPLIER;
+  int32_t x2 = Adc[idx].param4;
+
+  float m = (y2 - y1) / (float)(x2 - x1);
+  float ph = m * (float)(adc - x1) + y1;
+  
+  char ph_chr[FLOATSZ];
+  dtostrfd(ph, 2, ph_chr);
+
+  blinx_send_data_sensor(true, HTTP_SNS_PH, "", ph_chr);
+}
+void sendFunction_analog_mq(uint16_t val, int idx){
+  float voltage = val * ANALOG_V33 / ANALOG_RANGE;
+
+  float _RL = 10;                                        // Value in KiloOhms
+  float _RS_Calc = ((ANALOG_V33 * _RL) / voltage) -_RL;  // Get value of RS in a gas
+  if (_RS_Calc < 0) {
+    _RS_Calc = 0;                                        // No negative values accepted.
+  }
+
+  float _R0 = 10;
+  float _ratio = _RS_Calc / _R0;                         // Get ratio RS_gas/RS_air
+  float ppm = Adc[idx].param2 / ANALOG_MQ_DECIMAL_MULTIPLIER * FastPrecisePow(_ratio, Adc[idx].param3 / ANALOG_MQ_DECIMAL_MULTIPLIER);  // Source excel analisis https://github.com/miguel5612/MQSensorsLib_Docs/tree/master/Internal_design_documents
+  if (ppm < 0) { ppm = 0; }                              // No negative values accepted or upper datasheet recomendation.
+  if (ppm > 100000) { ppm = 100000; }
+
+  float mqnumber =Adc[idx].param1;
+
+  char mq_chr[FLOATSZ];
+  dtostrfd(ppm, 2, mq_chr);
+  char mqnumber_chr[FLOATSZ];
+  dtostrfd(mqnumber, 0, mqnumber_chr);
+  
+  blinx_send_data_sensor(true, HTTP_SNS_MQ, mqnumber_chr, mq_chr);
+}
+
+void AdcShowBlinx(uint32_t idx, uint8_t ind, uint32_t index_csv) {
+  if (idx == -1){
+    return;
+  }
+  if (index_csv == 0){
+    blinx_send_data_sensor(false, PSTR(",Analog_%s"), getTextFromIndexADC_blinx(idx));
+  } else {
+    switch (Adc[idx].type) {
+      case ADC_INPUT: {
+        Adc[idx].bufferBlinx->buffer[ind].getData(index_csv, &sendFunction_analog_input, idx);
+        break;
+      }
+      case ADC_TEMP: {
+        Adc[idx].bufferBlinx->buffer[ind].getData(index_csv, &sendFunction_analog_temp, idx);
+        break;
+      }
+      case ADC_LIGHT: {
+        Adc[idx].bufferBlinx->buffer[ind].getData(index_csv, &sendFunction_analog_light, idx);
+        break;
+      }
+      case ADC_RANGE: {
+        Adc[idx].bufferBlinx->buffer[ind].getData(index_csv, &sendFunction_analog_range, idx);
+        break;
+      }
+      case ADC_CT_POWER: {
+        Adc[idx].bufferBlinx->buffer[ind].getData(index_csv, &sendFunction_analog_power, idx);
+        break;
+      }
+      case ADC_JOY: {
+        Adc[idx].bufferBlinx->buffer[ind].getData(index_csv, &sendFunction_analog_joy, idx);
+        break;
+      }
+      case ADC_PH: {
+        Adc[idx].bufferBlinx->buffer[ind].getData(index_csv, &sendFunction_analog_ph, idx);
+        break;
+      }
+      case ADC_MQ: {
+        Adc[idx].bufferBlinx->buffer[ind].getData(index_csv, &sendFunction_analog_mq, idx);
+        break;
+      }
+    }
+  }
+}
+
+#endif // BLINX
+
 /*********************************************************************************************\
  * Commands
 \*********************************************************************************************/
@@ -909,6 +1183,20 @@ bool Xsns02(uint32_t function) {
     default:
       if (Adcs.present) {
         switch (function) {
+  #ifdef BLINX
+        case FUNC_EVERY_10_SECOND:
+          AdcGetBlinx(1);
+          break;
+        case FUNC_EVERY_MINUTE:
+          AdcGetBlinx(2);
+          break;
+        case FUNC_EVERY_10_MINUTE:
+          AdcGetBlinx(3);
+          break;
+        case FUNC_EVERY_HOUR:
+          AdcGetBlinx(4);
+          break;
+  #endif  // BLINX
 #ifdef USE_RULES
           case FUNC_EVERY_250_MSECOND:
             AdcEvery250ms();
@@ -916,6 +1204,9 @@ bool Xsns02(uint32_t function) {
 #endif  // USE_RULES
           case FUNC_EVERY_SECOND:
             AdcEverySecond();
+  #ifdef BLINX
+          AdcGetBlinx(0);
+  #endif  // BLINX
             break;
           case FUNC_JSON_APPEND:
             AdcShow(1);
@@ -930,5 +1221,46 @@ bool Xsns02(uint32_t function) {
   }
   return result;
 }
+
+
+#ifdef BLINX
+
+int Xsns02_size_data(uint32_t phantomType = 0){ // TODO number not true
+  return 5;
+}
+
+int Xsns02_size_name(uint32_t phantomType = 0){
+  if(Adc[phantomType].type == ADC_CT_POWER){
+    return 43;
+  }
+  return 9;
+}
+
+int Xsns02(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
+  switch (function) {
+    case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
+      return Xsns02_size_data(getIndexFromPinADC_blinx(phantomType));
+    case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
+      return Xsns02_size_name(getIndexFromPinADC_blinx(phantomType));
+    case FUNC_WEB_SENSOR_BLINX_1s:
+      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType), 0, index_csv);
+      break;
+    case FUNC_WEB_SENSOR_BLINX_10s:
+      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType), 1, index_csv);
+      break;
+    case FUNC_WEB_SENSOR_BLINX_1m:
+      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType), 2, index_csv);
+      break;
+    case FUNC_WEB_SENSOR_BLINX_10m:
+      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType), 3, index_csv);
+      break;
+    case FUNC_WEB_SENSOR_BLINX_1h:
+      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType), 4, index_csv);
+      break;
+  }
+  return -1;
+}
+
+#endif  // BLINX
 
 #endif  // USE_ADC

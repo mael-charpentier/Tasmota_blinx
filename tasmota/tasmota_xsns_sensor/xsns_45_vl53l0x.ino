@@ -140,6 +140,11 @@ void Vl53l0Detect(void) {
 
             Vl53l0x_data[i].ready = 1;
             Vl53l0x_data[i].index = 0;
+
+#ifdef BLINX
+            Vl53l0x_data[i].bufferBlinx = initBufferSensor(6);
+#endif // BLINX
+
             VL53L0X_detected = true;
             if (!VL53L0X_xshut) { break; }
         } else {
@@ -164,7 +169,7 @@ void Vl53l0_global(uint8_t ind) {
             dist = 9999;
         }
         Vl53l0x_data[i].distance = dist;
-        Vl53l0x_data[i].bufferBlinx[ind].save(dist);
+        Vl53l0x_data[i].bufferBlinx->buffer[0].save(dist);
       } else{
         Vl53l0x_data[i].bufferBlinx->save(ind);
       }
@@ -173,25 +178,23 @@ void Vl53l0_global(uint8_t ind) {
   }
 }
 
-void sendFunction_Vl53l0(uint16_t val){
+void sendFunction_Vl53l0(uint16_t val, int _){
     float distance = (val == 9999) ? NAN : (float)val / 10; // cm
-    WSContentSend_P(PSTR("%1_f,"), &distance);
+    blinx_send_data_sensor(true, PSTR("%1_f,"), &distance);
 }
 
-void Vl53l0Show_blinx(uint8_t ind, uint32_t index_csv) {
+void Vl53l0Show_blinx(uint32_t phantomType, uint32_t phantomData, uint8_t ind, uint32_t index_csv) {
   if (index_csv == 0){
     for (uint32_t i = 0; i < VL53LXX_MAX_SENSORS; i++) {
-      if (Vl53l0x_data[i].bufferBlinx == nullptr) { continue; }
-      if (PinUsed(GPIO_VL53LXX_XSHUT1, i) || (!VL53L0X_xshut)) {
-        WSContentSend_P(PSTR(",VL53L0X_%d"), i);
+      if ((PinUsed(GPIO_VL53LXX_XSHUT1, i) || (!VL53L0X_xshut)) && (Vl53l0x_data[i].bufferBlinx != nullptr)) {
+        blinx_send_data_sensor(true, PSTR(",VL53L0X_%d"), i);
       }
     }
   } else{
     for (uint32_t i = 0; i < VL53LXX_MAX_SENSORS; i++) {
-      if (Vl53l0x_data[i].bufferBlinx == nullptr) { continue; }
-      if (PinUsed(GPIO_VL53LXX_XSHUT1, i) || (!VL53L0X_xshut)) {
-        WSContentSend_P(PSTR(","));
-        Vl53l0x_data[i].bufferBlinx->buffer[ind].getData(index_csv, &sendFunction_Vl53l0);
+      if ((PinUsed(GPIO_VL53LXX_XSHUT1, i) || (!VL53L0X_xshut)) && (Vl53l0x_data[i].bufferBlinx != nullptr)) {
+        blinx_send_data_sensor(true, PSTR(","));
+        Vl53l0x_data[i].bufferBlinx->buffer[ind].getData(index_csv, &sendFunction_Vl53l0, 0);
       }
     }
   }
@@ -298,9 +301,6 @@ bool Xsns45(uint32_t function) {
         case FUNC_EVERY_50_MSECOND:
             Vl53l0_global(0);
           break;
-        case FUNC_EVERY_SECOND:
-            Vl53l0_global(1);
-          break;
         case FUNC_EVERY_10_SECOND:
             Vl53l0_global(2);
           break;
@@ -320,6 +320,11 @@ bool Xsns45(uint32_t function) {
   #ifdef USE_DOMOTICZ
       case FUNC_EVERY_SECOND:
           Vl53l0Every_Second();
+
+#ifdef BLINX
+            Vl53l0_global(1);
+#endif // BLINX
+
           break;
   #endif  // USE_DOMOTICZ
         case FUNC_JSON_APPEND:
@@ -336,35 +341,50 @@ bool Xsns45(uint32_t function) {
 }
 
 #ifdef BLINX
-bool Xsns45(uint32_t function, uint32_t index_csv, uint32_t phantom = 0) {
-  if (!I2cEnabled(XI2C_31)) { return false; }
 
-  bool result = false;
+int Xsns45_size_data(uint32_t phantomType = 0, uint32_t phantomData = 0){
+  return 5;
+}
+
+int Xsns45_size_name(uint32_t phantomType = 0, uint32_t phantomData = 0){
+  return 9;
+}
+
+int Xsns45(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
+  if (!I2cEnabled(XI2C_31)) { return false; }
 
   if (FUNC_INIT == function) {
     Vl53l0Detect();
   }
   else if (VL53L0X_detected) {
-      switch (function) {
+    switch (function) {
+        case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
+          return Xsns45_size_data(phantomType, phantomData);
+        case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
+          return Xsns45_size_name(phantomType, phantomData);
+        case FUNC_WEB_SENSOR_BLINX_50Ms:
+          Vl53l0Show_blinx(phantomType, phantomData, 0, index_csv);
+          break;
         case FUNC_WEB_SENSOR_BLINX_1s:
-          Vl53l0Show_blinx(0, index_csv);
+          Vl53l0Show_blinx(phantomType, phantomData, 1, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_10s:
-          Vl53l0Show_blinx(1, index_csv);
+          Vl53l0Show_blinx(phantomType, phantomData, 2, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_1m:
-          Vl53l0Show_blinx(2, index_csv);
+          Vl53l0Show_blinx(phantomType, phantomData, 3, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_10m:
-          Vl53l0Show_blinx(3, index_csv);
+          Vl53l0Show_blinx(phantomType, phantomData, 4, index_csv);
           break;
         case FUNC_WEB_SENSOR_BLINX_1h:
-          Vl53l0Show_blinx(4, index_csv);
+          Vl53l0Show_blinx(phantomType, phantomData, 5, index_csv);
           break;
     }
   }
-  return result;
+  return -1;
 }
+
 #endif  // BLINX
 
 #endif  // USE_VL53L0X
