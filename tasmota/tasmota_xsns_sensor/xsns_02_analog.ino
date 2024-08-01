@@ -842,18 +842,20 @@ void AdcGetBlinxMin(void) {
 }
 
 
-void AdcGetBlinx(uint8_t ind) {
-  if(ind == 0){
+void AdcGetBlinx(uint32_t index) {
+  if(index == 0){
     AdcGetBlinxMin();
     return;
   }
 
-  for (uint32_t idx = 0; idx < Adcs.present; idx++) {
-    if (Adc[idx].bufferBlinx == nullptr) {
-      Adc[idx].bufferBlinx = initBufferSensor(5);
-      Adc[idx].bufferBlinx->buffer[ind].save(0);
-    } else{
-      Adc[idx].bufferBlinx->save(ind);
+  for (int ind = 0; ind < index; ind++){
+    for (uint32_t idx = 0; idx < Adcs.present; idx++) {
+      if (Adc[idx].bufferBlinx == nullptr) {
+        Adc[idx].bufferBlinx = initBufferSensor(5);
+        Adc[idx].bufferBlinx->buffer[ind+1].save(0);
+      } else{
+        Adc[idx].bufferBlinx->save(ind+1);
+      }
     }
   }
 }
@@ -862,10 +864,10 @@ void AdcGetBlinx(uint8_t ind) {
 // TODO
 // keep the index
 
-void sendFunction_analog_input(uint16_t val, int idx){
-  blinx_send_data_sensor(true, HTTP_SNS_ANALOG, "", 0, val);
+void sendFunction_analog_input(int32_t val, int idx){
+  blinx_send_data_sensor(true, PSTR("%d"), val);
 }
-void sendFunction_analog_temp(uint16_t adc, int idx){
+void sendFunction_analog_temp(int32_t adc, int idx){
   double Rt;
 #ifdef ESP8266
   if (Adc[idx].param4) { // Alternate mode
@@ -885,24 +887,24 @@ void sendFunction_analog_temp(uint16_t adc, int idx){
 
   float t = ((float)(ConvertTemp(TO_CELSIUS(T)) * 175) / 65535.0) - 45.0;
   t = ConvertTemp(t);
-  blinx_send_data_sensor(true, PSTR("%*_f" D_UNIT_DEGREE "%c"), Settings->flag2.temperature_resolution, &t, TempUnit());
+  blinx_send_data_sensor(true, PSTR("%6.2f"), &t);
 }
-void sendFunction_analog_light(uint16_t adc, int idx){
+void sendFunction_analog_light(int32_t adc, int idx){
   double resistorVoltage = ((double)adc / ANALOG_RANGE) * ANALOG_V33;
   double ldrVoltage = ANALOG_V33 - resistorVoltage;
   double ldrResistance = ldrVoltage / resistorVoltage * (double)Adc[idx].param1;
   double ldrLux = (double)Adc[idx].param2 * FastPrecisePow(ldrResistance, (double)Adc[idx].param3 / 10000);
 
-  blinx_send_data_sensor(true, HTTP_SNS_ILLUMINANCE, "", (uint16_t)ldrLux);
+  blinx_send_data_sensor(true, PSTR("%d"), (uint16_t)ldrLux);
 }
-void sendFunction_analog_range(uint16_t adc, int idx){
+void sendFunction_analog_range(int32_t adc, int idx){
   double adcrange = ( ((double)Adc[idx].param2 - (double)adc) / ( ((double)Adc[idx].param2 - (double)Adc[idx].param1)) * ((double)Adc[idx].param3 - (double)Adc[idx].param4) + (double)Adc[idx].param4 );
   char range_chr[FLOATSZ];
   dtostrfd((float)adcrange, Settings->flag2.frequency_resolution, range_chr);
   
-  blinx_send_data_sensor(true, HTTP_SNS_RANGE_CHR, "", range_chr);
+  blinx_send_data_sensor(true, PSTR("%s"), range_chr);
 }
-void sendFunction_analog_power(uint16_t analog, int idx){
+void sendFunction_analog_power(int32_t analog, int idx){
   float current;
   if (0 == Adc[idx].param1) {
     current = (float)(analog) * ((float)(Adc[idx].param2) / 100000);
@@ -926,9 +928,9 @@ void sendFunction_analog_power(uint16_t analog, int idx){
   char power_chr[FLOATSZ];
   dtostrfd(voltage * current, Settings->flag2.wattage_resolution, power_chr);
 
-  blinx_send_data_sensor(true, HTTP_SNS_VOLTAGE, voltage_chr);
-  blinx_send_data_sensor(true, HTTP_SNS_CURRENT, current_chr);
-  blinx_send_data_sensor(true, HTTP_SNS_POWER, power_chr);
+  blinx_send_data_sensor(true, PSTR("%s"), voltage_chr);
+  blinx_send_data_sensor(true, PSTR("%s"), current_chr);
+  blinx_send_data_sensor(true, PSTR("%s"), power_chr);
 
   // TODO : save energy in buffer
   /*
@@ -940,11 +942,11 @@ void sendFunction_analog_power(uint16_t analog, int idx){
   blinx_send_data_sensor(true, HTTP_SNS_ENERGY_TOTAL, energy_chr);
   */
 }
-void sendFunction_analog_joy(uint16_t val, int idx){
-  uint16_t value = val / Adc[idx].param1;
+void sendFunction_analog_joy(int32_t val, int idx){
+  int32_t value = val / Adc[idx].param1;
   blinx_send_data_sensor(false, PSTR("%d"), val);
 }
-void sendFunction_analog_ph(uint16_t adc, int idx){
+void sendFunction_analog_ph(int32_t adc, int idx){
   float y1 = (float)Adc[idx].param1 / ANALOG_PH_DECIMAL_MULTIPLIER;
   int32_t x1 = Adc[idx].param2;
   float y2 = (float)Adc[idx].param3 / ANALOG_PH_DECIMAL_MULTIPLIER;
@@ -956,9 +958,9 @@ void sendFunction_analog_ph(uint16_t adc, int idx){
   char ph_chr[FLOATSZ];
   dtostrfd(ph, 2, ph_chr);
 
-  blinx_send_data_sensor(true, HTTP_SNS_PH, "", ph_chr);
+  blinx_send_data_sensor(true, PSTR("%s"), ph_chr);
 }
-void sendFunction_analog_mq(uint16_t val, int idx){
+void sendFunction_analog_mq(int32_t val, int idx){
   float voltage = val * ANALOG_V33 / ANALOG_RANGE;
 
   float _RL = 10;                                        // Value in KiloOhms
@@ -980,15 +982,15 @@ void sendFunction_analog_mq(uint16_t val, int idx){
   char mqnumber_chr[FLOATSZ];
   dtostrfd(mqnumber, 0, mqnumber_chr);
   
-  blinx_send_data_sensor(true, HTTP_SNS_MQ, mqnumber_chr, mq_chr);
+  blinx_send_data_sensor(true, PSTR("%s"), mq_chr);
 }
 
-void AdcShowBlinx(uint32_t idx, uint8_t ind, uint32_t index_csv) {
+void AdcShowBlinx(uint32_t idx, uint32_t ind, uint32_t index_csv) {
   if (idx == -1){
     return;
   }
   if (index_csv == 0){
-    blinx_send_data_sensor(false, PSTR(",Analog_%s"), getTextFromIndexADC_blinx(idx));
+    blinx_send_data_sensor(false, PSTR(",Analog_%s:0..3"), getTextFromIndexADC_blinx(idx));
   } else {
     switch (Adc[idx].type) {
       case ADC_INPUT: {

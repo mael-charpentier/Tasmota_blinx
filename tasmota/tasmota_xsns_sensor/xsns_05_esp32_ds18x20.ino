@@ -517,22 +517,25 @@ void Ds18x20GetFromReadBlinx(void) {
 }
 
 
-void Ds18x20GetBlinx(uint8_t ind) {
-  if(ind == 0){
+void Ds18x20GetBlinx(uint8_t indexBuffer) {
+  if(indexBuffer == 0){
     Ds18x20GetFromReadBlinx();
     return;
   }
 
-  for (uint32_t i = 0; i < DS18X20Data.sensors; i++) {
-    uint8_t index = ds18x20_sensor[i].index;
+  for (int ind = 0; ind < indexBuffer; ind++){
+    for (uint32_t i = 0; i < DS18X20Data.sensors; i++) {
+      uint8_t index = ds18x20_sensor[i].index;
 
-    if (ds18x20_sensor[index].valid) {   // Check for valid temperature
-      ds18x20_sensor[index].bufferBlinx->save(ind);
+      if (ds18x20_sensor[index].valid) {   // Check for valid temperature
+        ds18x20_sensor[index].bufferBlinx->save(ind+1);
+      }
     }
   }
 }
 
-void sendFunction_Ds18x20(uint16_t val, int index){
+
+float getTemp_Ds18x20(int32_t val, int index){
   int8_t sign = 1;
   float t;
   switch(ds18x20_sensor[index].address[0]) {
@@ -542,7 +545,7 @@ void sendFunction_Ds18x20(uint16_t val, int index){
     }
     case DS1822_CHIPID:
     case DS18B20_CHIPID: {
-      uint16_t temp12 = val;
+      int32_t temp12 = val;
       if (temp12 > 2047) {
         temp12 = (~temp12) +1;
         sign = -1;
@@ -556,17 +559,21 @@ void sendFunction_Ds18x20(uint16_t val, int index){
     }
   }
 
-  blinx_send_data_sensor(true, PSTR("%*_f" D_UNIT_DEGREE "%c"), Settings->flag2.temperature_resolution, &t, TempUnit());
+  return t;
 }
 
-void Ds18x20ShowBlinx(uint32_t phantomType, uint32_t phantomData, uint8_t ind, uint32_t index_csv) {
+void sendFunction_Ds18x20(int32_t val, int index){
+  blinx_send_data_sensor(true, PSTR("%6.2f"), getTemp_Ds18x20(val, index));// D_UNIT_DEGREE "%c"), t, TempUnit());
+}
+
+void Ds18x20ShowBlinx(uint32_t phantomType, uint32_t phantomData, uint32_t ind, uint32_t index_csv) {
   if (index_csv == 0){
     for (uint32_t i = 0; i < DS18X20Data.sensors; i++) {
       uint8_t index = ds18x20_sensor[i].index;
 
       if (ds18x20_sensor[index].valid) {   // Check for valid temperature
         Ds18x20Name(i);
-        blinx_send_data_sensor(false, PSTR(",%s"), DS18X20Data.name);
+        blinx_send_data_sensor(false, PSTR(",%s:"), DS18X20Data.name);
       }
     }
   } else {
@@ -641,6 +648,44 @@ int Xsns05_size_data(uint32_t phantomType = 0, uint32_t phantomData = 0){ // TOD
 
 int Xsns05_size_name(uint32_t phantomType = 0, uint32_t phantomData = 0){
   return 0;
+}
+
+bool Xsns05Name(bool first, bool json){
+  for (uint32_t i = 0; i < DS18X20Data.sensors; i++) {
+    uint8_t index = ds18x20_sensor[i].index;
+
+    if (ds18x20_sensor[index].valid) {   // Check for valid temperature
+      Ds18x20Name(i);
+      if (first){
+        if (json){
+          blinx_send_data_sensor(false, PSTR(","));
+        } else {
+          ResponseAppend_P(PSTR(","));
+        }
+      }
+      first = true;
+      if (json){
+        ResponseAppend_P(PSTR("\"%s\":{\"" D_JSON_TEMPERATURE "\":\"%4.1f\"}"), DS18X20Data.name,
+          getTemp_Ds18x20(
+            ds18x20_sensor[index].bufferBlinx->buffer[0].buffer[
+              ds18x20_sensor[index].bufferBlinx->buffer[0].get_last_index()
+            ],
+            index
+          )
+        );
+      } else{
+        blinx_send_data_sensor(false, PSTR("\"%s\":{\"" D_JSON_TEMPERATURE "\":\"%4.1f\"}"), DS18X20Data.name,
+          getTemp_Ds18x20(
+            ds18x20_sensor[index].bufferBlinx->buffer[0].buffer[
+              ds18x20_sensor[index].bufferBlinx->buffer[0].get_last_index()
+            ],
+            index
+          )
+        );
+      }
+    }
+  }
+  return first;
 }
 
 int Xsns05(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {

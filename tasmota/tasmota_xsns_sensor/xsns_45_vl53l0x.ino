@@ -67,6 +67,10 @@
 #define USE_VL_MEDIAN_SIZE 5   // Odd number of samples median detection
 
 
+#ifdef BLINX
+  #define VL53L0X_HIGH_SPEED
+#endif
+
 #include <algorithm>
 #include <Wire.h>
 #include "VL53L0X.h"
@@ -82,6 +86,8 @@ struct {
   uint16_t distance_prev;
 #ifdef BLINX
   bufferSensor* bufferBlinx = nullptr;
+  int32_t nanValue = 9999;
+  int32_t errorValue = 65535;
 #endif // BLINX
   uint16_t buffer[5];
   uint8_t index;
@@ -90,6 +96,9 @@ struct {
 
 bool VL53L0X_xshut = false;
 bool VL53L0X_detected = false;
+
+uint8_t VL53L0X_detected_number = 0;
+uint8_t VL53L0X_detected_index[VL53LXX_MAX_SENSORS];
 
 /********************************************************************************************/
 
@@ -140,12 +149,16 @@ void Vl53l0Detect(void) {
 
             Vl53l0x_data[i].ready = 1;
             Vl53l0x_data[i].index = 0;
+            VL53L0X_detected_index[VL53L0X_detected_number] = i;
+            VL53L0X_detected_number ++;
 
 #ifdef BLINX
-            Vl53l0x_data[i].bufferBlinx = initBufferSensor(6);
+            Vl53l0x_data[i].bufferBlinx = initBufferSensor(6, true, true, clampVl53l0xBlinx, Vl53l0x_data[i].nanValue, Vl53l0x_data[i].errorValue);
 #endif // BLINX
 
             VL53L0X_detected = true;
+
+  Serial.printf("\n\rtimerCall found\n\r");
             if (!VL53L0X_xshut) { break; }
         } else {
             AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_I2C D_SENSOR " VL53L0X %d - " D_FAILED_TO_START), i+1);
@@ -157,37 +170,52 @@ void Vl53l0Detect(void) {
 
 #ifdef BLINX
 
-void Vl53l0_global(uint8_t ind) {
-  for (uint32_t i = 0; i < VL53LXX_MAX_SENSORS; i++) {
-    if (Vl53l0x_data[i].bufferBlinx == nullptr) {
-      Vl53l0x_data[i].bufferBlinx = initBufferSensor(6);
+int32_t clampVl53l0xBlinx( int32_t v){
+  return 2200; //v;
+}
+
+void Vl53l0_global_50ms() {
+  for (uint32_t y = 0; y < VL53L0X_detected_number; y++) {
+    uint8_t i = VL53L0X_detected_index[y];
+    uint16_t dist = VL53L0X_device[i].readRangeContinuousMillimetersWithoutLoop();
+    if(dist == Vl53l0x_data[i].errorValue){
+      AddLog(LOG_LEVEL_INFO, PSTR("error value vl53l0x : [%d]"), dist);
+    } else if ((0 == dist) || (dist > 2200)) {
+      AddLog(LOG_LEVEL_INFO, PSTR("nan value vl53l0x : [%d]"), dist);
+      dist = Vl53l0x_data[i].nanValue;
     }
-    if (PinUsed(GPIO_VL53LXX_XSHUT1, i) || (!VL53L0X_xshut)) {
-      if (ind == 0){
-        uint16_t dist = VL53L0X_device[i].readRangeContinuousMillimeters();
-        if ((0 == dist) || (dist > 2200)) {
-            dist = 9999;
-        }
-        Vl53l0x_data[i].distance = dist;
-        Vl53l0x_data[i].bufferBlinx->buffer[0].save(dist);
-      } else{
-        Vl53l0x_data[i].bufferBlinx->save(ind);
-      }
-    }
+    Vl53l0x_data[i].distance = dist;
+    Vl53l0x_data[i].bufferBlinx->buffer[0].save(dist);
     if (!VL53L0X_xshut) { break; }
   }
 }
 
-void sendFunction_Vl53l0(uint16_t val, int _){
-    float distance = (val == 9999) ? NAN : (float)val / 10; // cm
-    blinx_send_data_sensor(true, PSTR("%1_f,"), &distance);
+void Vl53l0_global(uint8_t index) {
+  for (int ind = 0; ind < index; ind++){
+    for (uint32_t i = 0; i < VL53LXX_MAX_SENSORS; i++) {
+      if (PinUsed(GPIO_VL53LXX_XSHUT1, i) || (!VL53L0X_xshut)) {
+        if (Vl53l0x_data[i].bufferBlinx == nullptr) {
+          Vl53l0x_data[i].bufferBlinx = initBufferSensor(6, true, true, clampVl53l0xBlinx, Vl53l0x_data[i].nanValue, Vl53l0x_data[i].errorValue);
+          Vl53l0x_data[i].bufferBlinx->buffer[ind+1].save(0);
+        }
+        Vl53l0x_data[i].bufferBlinx->save(ind+1);
+      }
+      if (!VL53L0X_xshut) { break; }
+    }
+  }
 }
 
-void Vl53l0Show_blinx(uint32_t phantomType, uint32_t phantomData, uint8_t ind, uint32_t index_csv) {
+
+void sendFunction_Vl53l0(int32_t val, int _){
+    float distance = (val == 9999) ? NAN : (float)val / 10; // cm
+    blinx_send_data_sensor(true, PSTR("%4.1f"), distance);// cm"), distance);
+}
+
+void Vl53l0Show_blinx(uint32_t phantomType, uint32_t phantomData, uint32_t ind, uint32_t index_csv) {
   if (index_csv == 0){
     for (uint32_t i = 0; i < VL53LXX_MAX_SENSORS; i++) {
       if ((PinUsed(GPIO_VL53LXX_XSHUT1, i) || (!VL53L0X_xshut)) && (Vl53l0x_data[i].bufferBlinx != nullptr)) {
-        blinx_send_data_sensor(true, PSTR(",VL53L0X_%d"), i);
+        blinx_send_data_sensor(true, PSTR(",VL53L0X_%d:"), i);
       }
     }
   } else{
@@ -346,6 +374,28 @@ int Xsns45_size_data(uint32_t phantomType = 0, uint32_t phantomData = 0){
 
 int Xsns45_size_name(uint32_t phantomType = 0, uint32_t phantomData = 0){
   return 9;
+}
+
+bool Xsns45Name(bool first, bool json){
+  for (uint32_t i = 0; i < VL53LXX_MAX_SENSORS; i++) {
+    if ((PinUsed(GPIO_VL53LXX_XSHUT1, i) || (!VL53L0X_xshut)) && (Vl53l0x_data[i].bufferBlinx != nullptr)) {
+      if (first){
+        if (json){
+          ResponseAppend_P(PSTR(","));
+        } else {
+          blinx_send_data_sensor(false, PSTR(","));
+        }
+      }
+      float distance = (Vl53l0x_data[i].distance == 9999) ? NAN : (float)Vl53l0x_data[i].distance / 10;  // cm
+      first = true;
+      if (json){
+        ResponseAppend_P(PSTR("\"VL53L0X_%d\":{\"" D_JSON_DISTANCE "\":\"%4.1f\"}"), i, distance);
+      } else{
+        blinx_send_data_sensor(false, PSTR("\"VL53L0X_%d\":{\"" D_JSON_DISTANCE "\":\"%4.1f\"}"), i, distance);
+      }
+    }
+  }
+  return first;
 }
 
 int Xsns45(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
