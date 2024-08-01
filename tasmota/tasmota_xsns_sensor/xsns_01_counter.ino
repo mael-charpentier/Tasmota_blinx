@@ -433,14 +433,6 @@ bool Xsns01(uint32_t function)
 
 #ifdef BLINX
 
-int Xsns01_size_data(uint32_t phantomType = 0, uint32_t phantomData = 0){ // TODO number not true
-  return 0;
-}
-
-int Xsns01_size_name(uint32_t phantomType = 0, uint32_t phantomData = 0){
-  return 0;
-}
-
 bool Xsns01Name(bool first, bool json){
   for (uint32_t i = 0; i < MAX_COUNTERS; i++) {
     if (PinUsed(GPIO_CNTR1, i)) {
@@ -473,10 +465,6 @@ bool Xsns01Name(bool first, bool json){
 int Xsns01(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
   if (Counter.any_counter) {
     switch (function) {
-      case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
-        return Xsns01_size_data(phantomType, phantomData);
-      case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
-        return Xsns01_size_name(phantomType, phantomData);
       case FUNC_WEB_SENSOR_BLINX_1s:
         CounterShowBlinx(phantomType, phantomData, 0, index_csv);
         break;

@@ -642,14 +642,6 @@ bool Xsns05(uint32_t function) {
 
 #ifdef BLINX
 
-int Xsns05_size_data(uint32_t phantomType = 0, uint32_t phantomData = 0){ // TODO number not true
-  return 0;
-}
-
-int Xsns05_size_name(uint32_t phantomType = 0, uint32_t phantomData = 0){
-  return 0;
-}
-
 bool Xsns05Name(bool first, bool json){
   for (uint32_t i = 0; i < DS18X20Data.sensors; i++) {
     uint8_t index = ds18x20_sensor[i].index;
@@ -688,13 +680,10 @@ bool Xsns05Name(bool first, bool json){
   return first;
 }
 
+
 int Xsns05(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
   if (Counter.any_counter) {
     switch (function) {
-      case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
-        return Xsns05_size_data(phantomType, phantomData);
-      case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
-        return Xsns05_size_name(phantomType, phantomData);
       case FUNC_WEB_SENSOR_BLINX_1s:
         Ds18x20ShowBlinx(phantomType, phantomData, 0, index_csv);
         break;

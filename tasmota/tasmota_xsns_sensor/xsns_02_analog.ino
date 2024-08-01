@@ -1227,23 +1227,8 @@ bool Xsns02(uint32_t function) {
 
 #ifdef BLINX
 
-int Xsns02_size_data(uint32_t phantomType = 0){ // TODO number not true
-  return 5;
-}
-
-int Xsns02_size_name(uint32_t phantomType = 0){
-  if(Adc[phantomType].type == ADC_CT_POWER){
-    return 43;
-  }
-  return 9;
-}
-
 int Xsns02(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
   switch (function) {
-    case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
-      return Xsns02_size_data(getIndexFromPinADC_blinx(phantomType));
-    case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
-      return Xsns02_size_name(getIndexFromPinADC_blinx(phantomType));
     case FUNC_WEB_SENSOR_BLINX_1s:
       AdcShowBlinx(getIndexFromPinADC_blinx(phantomType), 0, index_csv);
       break;

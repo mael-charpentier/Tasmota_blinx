@@ -368,14 +368,6 @@ bool Xsns45(uint32_t function) {
 
 #ifdef BLINX
 
-int Xsns45_size_data(uint32_t phantomType = 0, uint32_t phantomData = 0){
-  return 5;
-}
-
-int Xsns45_size_name(uint32_t phantomType = 0, uint32_t phantomData = 0){
-  return 9;
-}
-
 bool Xsns45Name(bool first, bool json){
   for (uint32_t i = 0; i < VL53LXX_MAX_SENSORS; i++) {
     if ((PinUsed(GPIO_VL53LXX_XSHUT1, i) || (!VL53L0X_xshut)) && (Vl53l0x_data[i].bufferBlinx != nullptr)) {
@@ -406,10 +398,6 @@ int Xsns45(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint
   }
   else if (VL53L0X_detected) {
     switch (function) {
-        case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
-          return Xsns45_size_data(phantomType, phantomData);
-        case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
-          return Xsns45_size_name(phantomType, phantomData);
         case FUNC_WEB_SENSOR_BLINX_50Ms:
           Vl53l0Show_blinx(phantomType, phantomData, 0, index_csv);
           break;

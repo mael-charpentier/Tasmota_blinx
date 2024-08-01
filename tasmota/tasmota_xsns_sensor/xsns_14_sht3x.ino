@@ -370,23 +370,6 @@ bool Xsns14(uint32_t function) {
 }
 
 #ifdef BLINX
-
-int Xsns14_size_data(uint32_t phantomType = 0, uint32_t phantomData = 0){ // TODO number not true
-  if(phantomType == 2){
-    if(phantomData = 1){
-      return 7;
-    } else{
-      return 5;
-    }
-  }
-  return 0;
-}
-
-int Xsns14_size_name(uint32_t phantomType = 0, uint32_t phantomData = 0){
-  if(phantomType == 2){
-    return 16;
-}
-
 bool Xsns14Name(bool first, bool json){
   float t, h;
   char types_blinx_sht3x[11];
@@ -423,10 +406,6 @@ int Xsns14(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint
   }
   else if (sht3x_count) {
     switch (function) {
-        case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
-          return Xsns14_size_data(phantomType, phantomData);
-        case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
-          return Xsns14_size_name(phantomType, phantomData);
         case FUNC_WEB_SENSOR_BLINX_1s:
           Sht3xShow_blinx(phantomType, phantomData, 0, index_csv);
           break;
