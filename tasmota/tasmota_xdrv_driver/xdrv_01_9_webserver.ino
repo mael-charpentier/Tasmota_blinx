@@ -3776,12 +3776,14 @@ void HandleHttpRequestBlinxInfo(void)
     blinx_send_data_sensor(false, PSTR("{"));
     
     // for input sensor : analog + i2c (xsns), the function don't have any importance, it is the index 0
-    blinx_send_data_sensor(false, PSTR("\"sensor\":\""));
-    blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_1s, 0);
-    blinx_send_data_sensor(false, PSTR("\""));
-
-    // for the on off
-    if (TasmotaGlobal.devices_present) {
+    blinx_send_data_sensor(false, PSTR("\"sensor\":["));
+    blinxGetInfoSensorI2C(false, false);
+    blinx_send_data_sensor(false, PSTR("]"));
+    blinx_send_data_sensor(false, PSTR(",\"analog\":{"));
+    blinxGetInfoSensorAnalog();
+    blinx_send_data_sensor(false, PSTR("}"));
+    // for the on off, not sensor
+    /*if (TasmotaGlobal.devices_present) {
         blinx_send_data_sensor(false, PSTR(",\"DEVICE_on_off\":["));
         for (uint32_t idx = 1; idx <= TasmotaGlobal.devices_present; idx++) {
           blinx_send_data_sensor(false, PSTR("\"DEVICE_%d\""),idx);
@@ -3791,35 +3793,7 @@ void HandleHttpRequestBlinxInfo(void)
           }
         }
         blinx_send_data_sensor(false, PSTR("]"));
-    }
-    
-
-    // for the pwm
-    uint32_t number_pwm = 0;
-    for (uint32_t i = 0; i < MAX_PWMS; i++) {
-      if (PinUsed(GPIO_PWM1, i)) {
-        number_pwm ++;
-      }
-    }
-    if (number_pwm > 0){
-      uint32_t see_pwm = 0;
-      
-      blinx_send_data_sensor(false, PSTR(",\"PWM\":["));
-      for (uint32_t i = 0; i < MAX_PWMS; i++) {
-        if (PinUsed(GPIO_PWM1, i)) {
-          see_pwm ++;
-          int32_t pin = Pin(GPIO_PWM1, i);
-          int32_t chan = analogGetChannel2(pin);
-
-          blinx_send_data_sensor(false, PSTR("\"PWM_%d\""), i);
-
-          if (see_pwm < number_pwm){
-            blinx_send_data_sensor(false, PSTR(","));
-          }
-        }
-      }
-      blinx_send_data_sensor(false, PSTR("]"));
-    }
+    }*/
     
     // Info wifi
     blinx_send_data_sensor(false, PSTR(",\"" D_CMND_HOSTNAME "\":\"%s\",\""
