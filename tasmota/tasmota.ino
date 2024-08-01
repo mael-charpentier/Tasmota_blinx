@@ -148,6 +148,10 @@ struct idDeviceBlinx { // This structure is named "myDataType"
   String name;
 };
 
+struct timeSeparateBlinx { // This structure is named "myDataType"
+  uint32_t s;
+  uint32_t ms;
+};
 
 struct {
   uint32_t lastTime[6] = {0,0,0,0,0,0};
@@ -259,11 +263,19 @@ struct {
     readData = false;
   }
 
-
+  timeSeparateBlinx timeSeparate(uint32_t time){
+    uint32_t b = time/1000;     // seconds
+    uint32_t c = time - b*1000; // millis
+    return {b, c};
   }
 
-  uint32_t getTime(timeBlinx info, uint8_t index, uint32_t offset){
-    return time[info.ind] + info.millis_second * ( index - offset ) ;
+  timeSeparateBlinx addTimeSeparate(uint32_t time){
+    timeSeparateBlinx t = timeSeparate(time + timeNTP.ms);
+    return {t.s + timeNTP.s, t.ms};
+  }
+
+  timeSeparateBlinx getTime(uint32_t ind, uint32_t index, uint32_t offset){
+    return addTimeSeparate(timeShowRead + millis_second[ind] * ( index - offset )) ;
   }
 
   char* get_int(int value) {

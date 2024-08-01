@@ -587,8 +587,9 @@ int blinxFindSensor_VL53L0(String input, size_t l, uint32_t function, uint32_t i
 }
 
 
-
-
+int blinxFindSensorAll(uint32_t function){
+    return blinxFindSensorAll(function, 0);
+}
 int blinxFindSensorAll(uint32_t function, uint32_t index_csv){
    int sum = 0;
    sum += Xsns01(function, index_csv, 0, 0) + 1;

@@ -3411,13 +3411,19 @@ void HandleHttpRequestBlinxGet(void)
 
   if(vector_sensor_ask.size() != 0){
 
-    for (uint32_t i = 0; i < size_buffer+1; i++){
-      if (i == 0){
-        blinx_send_data_sensor(false, PSTR("Time"));
-      } else{
-        blinx_send_data_sensor(false, PSTR("%d"), infoConfigBlinx.getTime(infoTime, i, size_buffer));
-      }
+    // do the first line : time + name sensor
+    blinx_send_data_sensor(false, PSTR("Time"));
 
+    for (String &name_sensor : vector_sensor_ask){
+      blinxFindSensor(name_sensor, name_sensor.length(), function, 0);
+    }
+    
+    blinx_send_data_sensor(false, PSTR("\n"));
+
+    for (uint32_t i = begin_readable; i < size_buffer_readable+1; i++){
+      // do the others lines : time + data sensor
+      timeSeparateBlinx t = infoConfigBlinx.getTime(infoInd, i, size_buffer_readable);
+      blinx_send_data_sensor(false, PSTR("%u%03u"), t.s,t.ms);
       for (String &name_sensor : vector_sensor_ask){
         blinxFindSensor(name_sensor, name_sensor.length(), function, i);
       }
@@ -3425,12 +3431,16 @@ void HandleHttpRequestBlinxGet(void)
     }
     
   } else{
-    for (uint32_t i = 0; i < size_buffer+1; i++){
-      if (i == 0){
-        blinx_send_data_sensor(false, PSTR("Time"));
-      } else{
-        blinx_send_data_sensor(false, PSTR("%d"), infoConfigBlinx.getTime(infoTime, i, size_buffer));
-      }
+
+    // do the first line : time + name sensor
+    blinx_send_data_sensor(false, PSTR("Time"));
+    blinxFindSensorAll(function);
+    blinx_send_data_sensor(false, PSTR("\n"));
+
+    for (uint32_t i = begin_readable; i < size_buffer_readable+1; i++){
+      // do the others lines : time + data sensor
+      timeSeparateBlinx t = infoConfigBlinx.getTime(infoInd, i, size_buffer_readable);
+      blinx_send_data_sensor(false, PSTR("%u%03u"), t.s, t.ms);
       blinxFindSensorAll(function, i);
       blinx_send_data_sensor(false, PSTR("\n"));
     }
