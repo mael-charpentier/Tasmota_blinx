@@ -41,14 +41,28 @@ def generate_cpp_functions(prefix_dict):
 
     def all_sensor():
         cpp_code = "\n\n\n"
+        cpp_code += "int blinxFindSensorAll(uint32_t function){\n"
+        cpp_code += "    return blinxFindSensorAll(function, 0);\n"
+        cpp_code += "}\n\n"
         cpp_code += "int blinxFindSensorAll(uint32_t function, uint32_t index_csv){\n"
         cpp_code += "   int sum = 0;\n"
         for id in prefix_dict.values():
-            cpp_code += f"   sum += Xsns{id[0]}(function, index_csv, {id[1]}, {id[2]}) + 1;\n" # TODO phantom
+            cpp_code += f"   sum += Xsns{id[0]}(function, index_csv, {id[1]}, {id[2]}) + 1;\n"
         cpp_code += "   return sum;\n"
         cpp_code += "}\n\n"
         return cpp_code
-            
+           
+    def all_i2c_sensor():
+        cpp_code = "\n\n\n"
+        cpp_code += "void blinxGetInfoSensorI2C(bool first, bool json){"
+
+        donne = []
+        for i in prefix_dict:
+            if i not in analog_name and prefix_dict[i][0] not in donne:
+                donne.append(prefix_dict[i][0])
+                cpp_code += f"    first = Xsns{prefix_dict[i][0]}Name(first, json);\n"
+        cpp_code += "}\n\n"
+        return cpp_code
         
     
 
@@ -66,7 +80,7 @@ def generate_cpp_functions(prefix_dict):
             cpp_code += generate_function(prefix, remaining_dict)
 
 
-    return cpp_code + all_sensor()
+    return cpp_code + all_sensor() + all_i2c_sensor()
 
 # element in the dict : {"name_sensor" : ["id_sensor", type_sensor, type_data], ...}, if only 1 type put 0, if only 1 data put 0
 
@@ -80,5 +94,7 @@ prefix_dict = {
     "sht4x_temp": ["14",3, 1], "sht4x_humi": ["14",3, 2],
     "vl53l0x": ["45",0, 0],
 }
+analog_name = ["analog_1A", "analog_1B", "analog_2A", "analog_2B"]
+
 cpp_code = generate_cpp_functions(prefix_dict)
 print(cpp_code)
