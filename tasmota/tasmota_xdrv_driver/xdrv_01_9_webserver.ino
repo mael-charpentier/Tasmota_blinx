@@ -763,7 +763,9 @@ void WSHeaderSend(void)
   Webserver->sendHeader(F("Cache-Control"), F("no-cache, no-store, must-revalidate"));
   Webserver->sendHeader(F("Pragma"), F("no-cache"));
   Webserver->sendHeader(F("Expires"), F("-1"));
-#ifdef USE_CORS
+#if defined(BLINX)
+  Webserver->sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+#elif defined(USE_CORS)
   HttpHeaderCors();
 #endif
 }
