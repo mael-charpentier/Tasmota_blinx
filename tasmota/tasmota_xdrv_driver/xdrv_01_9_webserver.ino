@@ -3282,10 +3282,6 @@ std::vector<StringArray2> decodeContentlinx(String content, int numberArg){
 
 void HandleHttpRequestBlinxGet(void)
 {
-  bool codeboot = false;
-  if (Webserver->hasArg("?seqnum")){
-    codeboot = true;
-  }
 
   String time_ask = Webserver->arg(F("time"));
   String contentBase64 = Webserver->arg(F("content"));
@@ -3334,7 +3330,6 @@ void HandleHttpRequestBlinxGet(void)
     return;
   }
 
-  if(!codeboot){
     WSContentBegin(200, CT_HTML); // to get csv : CT_APP_CSV
     WSContentFlush();             // Flush chunk buffer (normalyy there will be nothing, because we didn't use it)
   }
@@ -3361,15 +3356,6 @@ void HandleHttpRequestBlinxGet(void)
   }
 
   if(vector_sensor_ask.size() != 0){
-    if(codeboot){
-      int size_image = 4; // for the time
-      for (String &name_sensor : vector_sensor_ask){
-        size_image += blinxFindSensor(name_sensor, name_sensor.length(), FUNC_WEB_SENSOR_BLINX_SIZE_NAME, 0) + 1; // +1 for the ,
-        size_image += size_buffer * (blinxFindSensor(name_sensor, name_sensor.length(), FUNC_WEB_SENSOR_BLINX_SIZE_DATA, 0)+1); // +1 for the ,
-      }
-      size_image += size_buffer * (std::to_string(infoConfigBlinx.getTime(infoTime, 0, size_buffer)).length());
-      blinx_encapsulation_data_begin(size_image);
-    }
 
     for (uint32_t i = 0; i < size_buffer+1; i++){
       if (i == 0){
@@ -3385,14 +3371,6 @@ void HandleHttpRequestBlinxGet(void)
     }
     
   } else{
-
-
-    if(codeboot){
-      int size_image = 4; // for the time
-      size_image += blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_SIZE_NAME, 0);
-      size_image += size_buffer * (blinxFindSensorAll(FUNC_WEB_SENSOR_BLINX_SIZE_DATA, 0) + (std::to_string(infoConfigBlinx.getTime(infoTime, 0, size_buffer)).length()));
-      blinx_encapsulation_data_begin(size_image);
-    }
     for (uint32_t i = 0; i < size_buffer+1; i++){
       if (i == 0){
         blinx_send_data_sensor(false, PSTR("Time"));
@@ -3404,11 +3382,7 @@ void HandleHttpRequestBlinxGet(void)
     }
   }
 
-  if(codeboot){
-    blinx_encapsulation_data_end();
-  }else {
-    WSContentEnd();
-  }
+  WSContentEnd();
 
   return;
 }
@@ -3428,11 +3402,6 @@ uint32_t name_to_id_type(String input_name){
 
 void HandleHttpRequestBlinxConfigAnalog(void)
 {
- 
-  bool codeboot = false;
-  if (Webserver->hasArg("?seqnum")){
-    codeboot = true;
-  }
 
   String port1AString = Webserver->arg(F("port1A"));
   String port1BString = Webserver->arg(F("port1B"));
@@ -3475,16 +3444,8 @@ void HandleHttpRequestBlinxConfigAnalog(void)
     Settings->my_gp.io[5] = name_to_id_type(port2BString) + 8;
   }
 
-
-  if(codeboot){
-    int size_image = 4; // for the time
-    blinx_encapsulation_data_begin(size_image);
-    blinx_send_data_sensor(false, PSTR("Done"));
-    blinx_encapsulation_data_end();
-  } else{
     WSContentBegin(200, CT_HTML);
     WSContentEnd();
-  }
 
   char command[32];
   snprintf_P(command, sizeof(command), PSTR(D_CMND_BACKLOG "0 " D_CMND_MODULE ";" D_CMND_GPIO));
@@ -3496,10 +3457,6 @@ void HandleHttpRequestBlinxConfigAnalog(void)
 
 void HandleHttpRequestBlinxRelay(void)
 {
-  bool codeboot = false;
-  if (Webserver->hasArg("?seqnum")){
-    codeboot = true;
-  }
 
   String deviceString = Webserver->arg(F("device"));
   String whatToDoString = Webserver->arg(F("action"));
@@ -3545,15 +3502,8 @@ void HandleHttpRequestBlinxRelay(void)
   
   ExecuteCommandPower(device, whatToDo, SRC_IGNORE);
 
-  if(codeboot){
-    int size_image = 4; // for the time
-    blinx_encapsulation_data_begin(size_image);
-    blinx_send_data_sensor(false, PSTR("Done"));
-    blinx_encapsulation_data_end();
-  } else{
     WSContentBegin(200, CT_HTML);
     WSContentEnd();
-  }
 
   return;
 }
@@ -3561,11 +3511,6 @@ void HandleHttpRequestBlinxRelay(void)
 
 void HandleHttpRequestBlinxDisplay(void)
 {
-  bool codeboot = false;
-  if (Webserver->hasArg("?seqnum")){
-    codeboot = true;
-  }
-
   String DisplayModeString = Webserver->arg(F("DisplayMode"));
   String DisplayDimmerString = Webserver->arg(F("DisplayDimmer"));
   String DisplaySizeString = Webserver->arg(F("DisplaySize"));
@@ -3621,15 +3566,8 @@ void HandleHttpRequestBlinxDisplay(void)
     ExecuteWebCommand(svalue);
   }
 
-  if(codeboot){
-    int size_image = 4; // for the time
-    blinx_encapsulation_data_begin(size_image);
-    blinx_send_data_sensor(false, PSTR("Done"));
-    blinx_encapsulation_data_end();
-  } else{
     WSContentBegin(200, CT_HTML);
     WSContentEnd();
-  }
 
   return;
 }
@@ -3637,10 +3575,6 @@ void HandleHttpRequestBlinxDisplay(void)
 
 void HandleHttpRequestBlinxPWM(void)
 {
-  bool codeboot = false;
-  if (Webserver->hasArg("?seqnum")){
-    codeboot = true;
-  }
 
   String indexPWM = Webserver->arg(F("index"));
   String freqPWM = Webserver->arg(F("freq"));
@@ -3683,15 +3617,8 @@ void HandleHttpRequestBlinxPWM(void)
 
     PwmApplyGPIO(false);
 
-    if(codeboot){
-      int size_image = 4; // for the time
-      blinx_encapsulation_data_begin(size_image);
-      blinx_send_data_sensor(false, PSTR("Done"));
-      blinx_encapsulation_data_end();
-    } else{
       WSContentBegin(200, CT_HTML);
       WSContentEnd();
-    }
   }
 
   return;
@@ -3699,16 +3626,6 @@ void HandleHttpRequestBlinxPWM(void)
 
 void HandleHttpRequestBlinxInfo(void)
 {
-  bool codeboot = false;
-  if (Webserver->hasArg("?seqnum")){
-    codeboot = true;
-  }
-
-
-
-  if(codeboot){
-    // we don't know the size
-  } else{
     WSContentBegin(200, CT_HTML);
 
     blinx_send_data_sensor(false, PSTR("{"));
@@ -3768,17 +3685,12 @@ void HandleHttpRequestBlinxInfo(void)
                           WiFi.macAddress().c_str(), TasmotaGlobal.version);
 
     WSContentEnd();
-  }
 
   return;
 }
 
 void HandleHttpRequestBlinxName(void)
 {
-  bool codeboot = false;
-  if (Webserver->hasArg("?seqnum")){
-    codeboot = true;
-  }
 
   String newName = Webserver->arg(F("name"));
 
@@ -3797,96 +3709,10 @@ void HandleHttpRequestBlinxName(void)
     String cmnd = F(D_CMND_BACKLOG "0 ;" D_CMND_HOSTNAME " ");
     cmnd += newName;
 
-    if(codeboot){
-      int size_image = 4; // for the time
-      blinx_encapsulation_data_begin(size_image);
-      blinx_send_data_sensor(false, PSTR("Done"));
-    } else{
       WSContentBegin(200, CT_HTML);
       WSContentEnd();
-    }
-
     ExecuteWebCommand((char*)cmnd.c_str());
   }
-}
-
-
-#include <Crc32.h>
-
-void blinx_calculate_CRC(const char* data, size_t length) {
-  infoConfigBlinx.encapsulation_crc = crc32_1byte(data, length, infoConfigBlinx.encapsulation_crc);
-}
-
-
-void blinx_encapsulation_data_begin(int size) {
-
-  infoConfigBlinx.encapsulation_size = size;
-
-  infoConfigBlinx.encapsulation_size_padding = 2 - size % 3;
-  infoConfigBlinx.encapsulation_size_div3 = floor((size + 3) / 3);
-  infoConfigBlinx.encapsulation_size_nbytes = infoConfigBlinx.encapsulation_size_div3 * 3;
-
-  char *padding_char = new char(infoConfigBlinx.encapsulation_size_padding & 0xFF);
-
-  infoConfigBlinx.encapsulation_a = 1;
-  infoConfigBlinx.encapsulation_b = 0;
-
-  int png_overhead = 69;
-
-
-  Webserver->client().flush();
-
-  char server[32];
-  snprintf_P(server, sizeof(server), PSTR("Tasmota/%s (%s)"), TasmotaGlobal.version, GetDeviceHardware().c_str());
-  Webserver->sendHeader(F("Server"), server);
-  Webserver->sendHeader(F("Cache-Control"), F("no-cache, no-store, must-revalidate"));
-  Webserver->sendHeader(F("Pragma"), F("no-cache"));
-  Webserver->sendHeader(F("Expires"), F("-1"));
-  Webserver->sendHeader(F("Access-Control-Allow-Origin"), F("*"));
-  //Webserver->sendHeader(F("Connection"), F("Closed"));
-
-  Webserver->setContentLength(CONTENT_LENGTH_UNKNOWN);//infoConfigBlinx.encapsulation_size_nbytes + png_overhead);
-  Webserver->send(200, "image/x-png", "");
-  
-
-  Web.chunk_buffer = "";
-  Web.chunk_buffer_size = 0;
-
-
-  //_WSContentSend("HTTP/1.1 200 OK\r\nContent-Type: image/x-png\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: ");
-  //blinx_send_data_sensor(false, PSTR("%d"), infoConfigBlinx.encapsulation_size_nbytes + png_overhead);
-  //_WSContentSend("\r\nConnection: Closed\r\n\r\n");
-
-  infoConfigBlinx.encapsulation = true;
-  infoConfigBlinx.encapsulation_crc = 0;
-
-  _WSContentSendBufferChunk("\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8);
-
-  _WSContentSendBufferChunk(infoConfigBlinx.get_int(13), 4);
-  blinx_encapsulation_send_data("IHDR", 4);
-  blinx_encapsulation_send_data(infoConfigBlinx.get_int(infoConfigBlinx.encapsulation_size_div3), 4);
-  blinx_encapsulation_send_data(infoConfigBlinx.get_int(1), 4);
-  blinx_encapsulation_send_data("\x08\x02\x00\x00\x00", 5);
-  blinx_encapsulation_send_crc();
-
-  _WSContentSendBufferChunk(infoConfigBlinx.get_int(infoConfigBlinx.encapsulation_size_nbytes + 12), 4);
-  blinx_encapsulation_send_data("IDAT", 4);
-  blinx_encapsulation_send_data("\x78\x01\x01", 3);
-  blinx_encapsulation_send_data(infoConfigBlinx.get_int_short(infoConfigBlinx.encapsulation_size_nbytes+1), 2);
-  blinx_encapsulation_send_data(infoConfigBlinx.get_int_short((infoConfigBlinx.encapsulation_size_nbytes+1) ^ 0xFFFF), 2);
-  blinx_encapsulation_send_data("\x00", 1);
-  blinx_encapsulation_send_data(padding_char, 1);
-  
-  infoConfigBlinx.encapsulation_a = (infoConfigBlinx.encapsulation_a+infoConfigBlinx.encapsulation_size_padding) % 65521;
-  infoConfigBlinx.encapsulation_b = (infoConfigBlinx.encapsulation_b+infoConfigBlinx.encapsulation_a) % 65521;
-
-  WSContentFlush();                                // Flush chunk buffer (normalyy there will be nothing, because we didn't use it)
-}
-
-void blinx_encapsulation_send_data(const char* data, size_t length) { 
-  blinx_calculate_CRC(data, length);
-  //_WSContentSend
-  _WSContentSendBufferChunk(data, length);
 }
 
 void blinx_send_data_sensor(boolean PD, const char* formatP...) { 
@@ -3899,13 +3725,6 @@ void blinx_send_data_sensor(boolean PD, const char* formatP...) {
   if (content == nullptr) { return; }              // Avoid crash
   size_t l = sizeof(content)/sizeof(*content);
 
-  if (infoConfigBlinx.encapsulation){
-    for (int i = 0; i<l; i++){
-      infoConfigBlinx.encapsulation_a = (infoConfigBlinx.encapsulation_a+content[i]) % 65521;
-      infoConfigBlinx.encapsulation_b = (infoConfigBlinx.encapsulation_b+infoConfigBlinx.encapsulation_a) % 65521;
-    }
-    blinx_encapsulation_send_data(content, l);
-  } else{
     if (PD && (D_DECIMAL_SEPARATOR[0] != '.')) {
       for (uint32_t i = 0; i < l; i++) {
         if ('.' == content[i]) {
@@ -3914,37 +3733,15 @@ void blinx_send_data_sensor(boolean PD, const char* formatP...) {
       }
     }
     _WSContentSendBufferChunk(content, l);
-  }
+
   free(content);
 
   va_end(arg);
 }
 
-void blinx_encapsulation_send_crc() { 
-  _WSContentSendBufferChunk(infoConfigBlinx.get_int(infoConfigBlinx.encapsulation_crc), 4);
-  infoConfigBlinx.encapsulation_crc = 0;
-}
 
-void blinx_encapsulation_data_end() { 
-  WSContentFlush();                                // Flush chunk buffer (normalyy there will be nothing, because we didn't use it)
 
-  for (int i = 0; i < infoConfigBlinx.encapsulation_size_padding; i++) {
-    blinx_encapsulation_send_data("\xFF", 1);
-    infoConfigBlinx.encapsulation_a = (infoConfigBlinx.encapsulation_a + 255) % 65521;
-    infoConfigBlinx.encapsulation_b = (infoConfigBlinx.encapsulation_b + infoConfigBlinx.encapsulation_a) % 65521;
   }
-
-  blinx_encapsulation_send_data(infoConfigBlinx.get_int((infoConfigBlinx.encapsulation_b << 16) + infoConfigBlinx.encapsulation_a), 4);
-  blinx_encapsulation_send_crc();
-  
-  _WSContentSendBufferChunk(infoConfigBlinx.get_int(0), 4);
-  blinx_encapsulation_send_data("IEND", 4);
-  blinx_encapsulation_send_crc();
-
-
-  WSContentEnd();
-  
-  infoConfigBlinx.encapsulation = false;
 }
 
 
