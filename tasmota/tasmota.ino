@@ -1357,6 +1357,7 @@ void Scheduler(void) {
 
 
   #ifdef BLINX
+  // get the data
     if (whatTime != -1){
       XsnsCall(whatTime);
       whatTime = -1;

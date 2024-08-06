@@ -2,6 +2,8 @@
 
 #ifdef BLINX
 
+// prefix tree to find sensor for the name
+
 int blinxFindSensor(String input, size_t l, uint32_t function, uint32_t index_csv){
     if (l == 0) { return -1; }
     else if (input[0] == 'a'){
@@ -607,7 +609,6 @@ int blinxFindSensorAll(uint32_t function, uint32_t index_csv){
    sum += Xsns45(function, index_csv, 0, 0) + 1;
    return sum;
 }
-
 
 void blinxGetInfoSensorI2C(bool first, bool json){
     first = Xsns01Name(first, json);

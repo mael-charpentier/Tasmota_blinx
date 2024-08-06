@@ -3226,7 +3226,10 @@ void HandleHttpCommand(void)
 using StringArray2 = std::array<String, 2>;
 
 
-String base64_decode_test(String in) { // function from : https://stackoverflow.com/questions/180947/base64-decode-snippet-in-c
+String base64_decode_test(String in) {
+    // function from : https://stackoverflow.com/questions/180947/base64-decode-snippet-in-c
+    // function to decode a string in base64
+    
     String out;
 
     std::vector<int> T(256,-1);
@@ -3256,10 +3259,13 @@ std::vector<StringArray2> decodeContentlinx(String content, int numberArg){
     int start = 0;
     bool stop = false;
     for (int i = 0; i < numberArg; i++) {
+      // get all the key and value of the args in the string encode in base64
       int separatorIndex = decodedContent.indexOf("&", start); // Find the position of '&'
       String key = "";
       String value = "";
       String temp = "";
+      
+      // get the arg
       if (separatorIndex == -1) {
         temp = decodedContent.substring(start);
         stop = true;
@@ -3267,6 +3273,8 @@ std::vector<StringArray2> decodeContentlinx(String content, int numberArg){
         temp = decodedContent.substring(start, separatorIndex);
         start = separatorIndex + 1; // Move start index to the next character after '&'
       }
+      
+      // get the key and value
       separatorIndex = temp.indexOf("=");
       if (separatorIndex == -1) {
         key = temp;
@@ -3276,6 +3284,7 @@ std::vector<StringArray2> decodeContentlinx(String content, int numberArg){
           value = temp.substring(separatorIndex+1);
         }
       }
+      
       StringArray2 t = {key, value};
       keyValuePairs.push_back(t);
 
@@ -3453,7 +3462,6 @@ void HandleHttpRequestBlinxGet(void)
 }
 
 
-
 void HandleHttpRequestBlinxConfigAnalog(void)
 {
 
@@ -3502,7 +3510,6 @@ void HandleHttpRequestBlinxConfigAnalog(String port1AString, String port1BString
   SetModuleType();
   myio template_gp;
   TemplateGpios(&template_gp);
-
   
   if(port1AString == ""){
     port1AString = infoConfigBlinx.find_name_type(Settings->my_gp.io[2]);
@@ -3828,6 +3835,8 @@ void HandleHttpRequestBlinxName(void)
 }
 
 void blinx_send_data_sensor(boolean PD, const char* formatP...) { 
+  // function to send the data inside an encapsulation or not
+
   //PD = true, equivalent WSContentSend_PD
   //PD = false, equivalent WSContentSend_P--
   va_list arg;
@@ -3851,6 +3860,11 @@ void blinx_send_data_sensor(boolean PD, const char* formatP...) {
   va_end(arg);
 }
 
+void blinx_encapsulation_send_crc() {
+  // send the result of the crc32
+  _WSContentSendBufferChunk(infoConfigBlinx.get_int(infoConfigBlinx.encapsulation_crc), 4);
+  infoConfigBlinx.encapsulation_crc = 0;
+}
 
 void HandleHttpRequestBlinxApiGetPort(String idType, String element, int index){
   if (idType == "Relay" || idType == "Relay_i"){ // relay/led ...

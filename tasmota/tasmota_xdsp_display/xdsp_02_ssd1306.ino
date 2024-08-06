@@ -152,8 +152,10 @@ void Ssd1306Time(void)
 #ifdef BLINX
 void Ssd1306PrintBlinx(bool updateFirstLine)
 {
-  if(infoConfigBlinx.canShow){
-    if(TimeReached(infoConfigBlinx.timeDisplayDmmer)){
+  // function to show information on the display
+  
+  if(infoConfigBlinx.canShow){ // can we show information ? for the display sleep
+    if(TimeReached(infoConfigBlinx.timeDisplayDmmer)){ // is it time to put the display to sleep ?
       infoConfigBlinx.canShow = false;
       DisplayClear();
       SetDisplayDimmer(0);
@@ -161,7 +163,7 @@ void Ssd1306PrintBlinx(bool updateFirstLine)
       Response_P(S_JSON_COMMAND_NVALUE, "DisplayDimmer", 0);
       return;
     }
-    if (GetDisplayDimmer() == 0){
+    if (GetDisplayDimmer() == 0){ // is it time to wake up the display ?
       SetDisplayDimmer(100);
       ApplyDisplayDimmer();
       Response_P(S_JSON_COMMAND_NVALUE, "DisplayDimmer", 100);
@@ -172,6 +174,8 @@ void Ssd1306PrintBlinx(bool updateFirstLine)
     if (!disp_refresh) {
       disp_refresh = Settings->display_refresh;
       if (!disp_screen_buffer_cols) { DisplayAllocScreenBuffer(); }
+      
+      // get the data from the sensor to show on display
       DisplayBlinxGetData();
 
       uint8_t last_row = Settings->display_rows -1;
@@ -181,6 +185,7 @@ void Ssd1306PrintBlinx(bool updateFirstLine)
       renderer->setTextSize(Settings->display_size);
       renderer->setCursor(0,0);
 
+      // do we show the ssid or the hostname
       if (infoConfigBlinx.displayWifi && !TasmotaGlobal.global_state.wifi_down) {
         snprintf_P(buffer, sizeof(buffer), PSTR("ssid %s"), SettingsText(SET_STASSID1 + Settings->sta_active));
       } else{
@@ -189,6 +194,7 @@ void Ssd1306PrintBlinx(bool updateFirstLine)
       strlcpy(disp_screen_buffer[0], buffer, disp_screen_buffer_cols);
       renderer->println(buffer);
 
+      // show the first 3 sensors
       for (byte i = 1; i < Settings->display_rows; i++) {
         char* txt = DisplayLogBuffer('\370');
         if (txt != NULL) {
@@ -197,10 +203,12 @@ void Ssd1306PrintBlinx(bool updateFirstLine)
         }
       }
       
+      // update the frame
       renderer->Updateframe();
       //DisplayFillScreen(last_row);
 
-      if(updateFirstLine){
+      
+      if(updateFirstLine){ // change the first line (ssid to hostname or inverse)
         infoConfigBlinx.displayWifi = !infoConfigBlinx.displayWifi;
       }
     }
