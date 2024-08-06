@@ -66,6 +66,9 @@ struct {
 #ifdef DS18x20_USE_ID_ALIAS
   char *alias = (char*)calloc(DS18X20_ALIAS_LEN, 1);
 #endif //DS18x20_USE_ID_ALIAS
+#ifdef BLINX
+  bufferSensor* bufferBlinx = nullptr;
+#endif // BLINX
 } ds18x20_sensor[DS18X20_MAX_SENSORS];
 
 #include <OneWire.h>
@@ -92,6 +95,9 @@ void Ds18x20Init(void) {
       }
       ds18x20_gpios[pins] = new OneWire(Pin(GPIO_DSB, pins), pin_out);
       DS18X20Data.gpios++;
+#ifdef BLINX
+        ds18x20_sensor[DS18X20Data.sensors].bufferBlinx = initBufferSensor(5);
+#endif // BLINX
     }
   }
   Ds18x20Search();
@@ -435,6 +441,155 @@ void CmndDSAlias(void) {
 }
 #endif  // DS18x20_USE_ID_ALIAS
 
+
+
+#ifdef BLINX
+
+int Ds18x20ReadBlinx(uint8_t sensor) {
+  uint8_t data[12];
+  //int8_t sign = 1;
+
+  int t = -1;
+
+  uint8_t index = ds18x20_sensor[sensor].index;
+  if (ds18x20_sensor[index].valid) { ds18x20_sensor[index].valid--; }
+  ds = ds18x20_gpios[ds18x20_sensor[index].pins_id];
+  ds->reset();
+  ds->select(ds18x20_sensor[index].address);
+    // With parasite power held wire high at the end for parasitically powered devices
+  ds->write(W1_READ_SCRATCHPAD, 1); // Read Scratchpad
+
+  for (uint32_t i = 0; i < 9; i++) {
+    data[i] = ds->read();
+  }
+  if (OneWire::crc8(data, 8) == data[8]) {
+    switch(ds18x20_sensor[index].address[0]) {
+      case DS18S20_CHIPID: {
+        t = (((data[1] << 8) | (data[0] & 0xFE)) << 3) | ((0x10 - data[6]) & 0x0F);
+        /*int16_t tempS = (((data[1] << 8) | (data[0] & 0xFE)) << 3) | ((0x10 - data[6]) & 0x0F);
+        t = ConvertTemp(tempS * 0.0625f - 0.250f);
+        ds18x20_sensor[index].temperature = t;*/
+        ds18x20_sensor[index].valid = SENSOR_MAX_MISS;
+        return t;
+      }
+      case DS1822_CHIPID:
+      case DS18B20_CHIPID: {
+        t = (data[1] << 8) + data[0];
+        /*uint16_t temp12 = (data[1] << 8) + data[0];
+        if (temp12 > 2047) {
+          temp12 = (~temp12) +1;
+          sign = -1;
+        }
+        t = ConvertTemp(sign * temp12 * 0.0625f);  // Divide by 16
+        ds18x20_sensor[index].temperature = t;*/
+        ds18x20_sensor[index].valid = SENSOR_MAX_MISS;
+        return t;
+      }
+      case MAX31850_CHIPID: {
+        t = (data[1] << 8) + (data[0] & 0xFC);
+        /*int16_t temp14 = (data[1] << 8) + (data[0] & 0xFC);
+        t = ConvertTemp(temp14 * 0.0625f);  // Divide by 16
+        ds18x20_sensor[index].temperature = t;*/
+        ds18x20_sensor[index].valid = SENSOR_MAX_MISS;
+        return t;
+      }
+    }
+  }
+  return t;
+}
+
+void Ds18x20GetFromReadBlinx(void) {
+  for (uint32_t i = 0; i < DS18X20Data.sensors; i++) {
+    uint8_t index = ds18x20_sensor[i].index;
+
+    if (ds18x20_sensor[index].valid) {   // Check for valid temperature
+      int result = -1;
+      uint8_t counter = 0;
+      while (counter++ < DS18X20Data.retryRead+1) {
+        result = Ds18x20ReadBlinx(i);
+        if(result != -1) {
+          ds18x20_sensor[index].bufferBlinx->buffer[0].save(result);
+          break;
+        }
+      }
+    }
+  }
+}
+
+
+void Ds18x20GetBlinx(uint8_t indexBuffer) {
+  if(indexBuffer == 0){
+    Ds18x20GetFromReadBlinx();
+    return;
+  }
+
+  for (int ind = 0; ind < indexBuffer; ind++){
+    for (uint32_t i = 0; i < DS18X20Data.sensors; i++) {
+      uint8_t index = ds18x20_sensor[i].index;
+
+      if (ds18x20_sensor[index].valid) {   // Check for valid temperature
+        ds18x20_sensor[index].bufferBlinx->save(ind+1);
+      }
+    }
+  }
+}
+
+
+float getTemp_Ds18x20(int32_t val, int index){
+  int8_t sign = 1;
+  float t;
+  switch(ds18x20_sensor[index].address[0]) {
+    case DS18S20_CHIPID: {
+      t = ConvertTemp(val * 0.0625f - 0.250f);
+      break;
+    }
+    case DS1822_CHIPID:
+    case DS18B20_CHIPID: {
+      int32_t temp12 = val;
+      if (temp12 > 2047) {
+        temp12 = (~temp12) +1;
+        sign = -1;
+      }
+      t = ConvertTemp(sign * temp12 * 0.0625f);  // Divide by 16
+      break;
+    }
+    case MAX31850_CHIPID: {
+      t = ConvertTemp(val * 0.0625f);  // Divide by 16
+      break;
+    }
+  }
+
+  return t;
+}
+
+void sendFunction_Ds18x20(int32_t val, int index){
+  blinx_send_data_sensor(true, PSTR("%6.2f"), getTemp_Ds18x20(val, index));// D_UNIT_DEGREE "%c"), t, TempUnit());
+}
+
+void Ds18x20ShowBlinx(uint32_t phantomType, uint32_t phantomData, uint32_t ind, uint32_t index_csv) {
+  if (index_csv == 0){
+    for (uint32_t i = 0; i < DS18X20Data.sensors; i++) {
+      uint8_t index = ds18x20_sensor[i].index;
+
+      if (ds18x20_sensor[index].valid) {   // Check for valid temperature
+        Ds18x20Name(i);
+        blinx_send_data_sensor(false, PSTR(",%s:"), DS18X20Data.name);
+      }
+    }
+  } else {
+    for (uint32_t i = 0; i < DS18X20Data.sensors; i++) {
+      uint8_t index = ds18x20_sensor[i].index;
+
+      if (ds18x20_sensor[index].valid) {   // Check for valid temperature
+        Counter.bufferBlinx[i]->buffer[ind].getData(index_csv, &sendFunction_Ds18x20, index);
+      }
+    }
+  }
+}
+
+#endif // BLINX
+
+
 /*********************************************************************************************\
  * Interface
 \*********************************************************************************************/
@@ -444,6 +599,23 @@ bool Xsns05(uint32_t function) {
 
   if (PinUsed(GPIO_DSB, GPIO_ANY)) {
     switch (function) {
+  #ifdef BLINX
+        case FUNC_EVERY_1_SECOND_TIMER:
+          Ds18x20GetBlinx(0);
+          break;
+        case FUNC_EVERY_10_SECOND:
+          Ds18x20GetBlinx(1);
+          break;
+        case FUNC_EVERY_MINUTE:
+          Ds18x20GetBlinx(2);
+          break;
+        case FUNC_EVERY_10_MINUTE:
+          Ds18x20GetBlinx(3);
+          break;
+        case FUNC_EVERY_HOUR:
+          Ds18x20GetBlinx(4);
+          break;
+  #endif  // BLINX
       case FUNC_INIT:
         Ds18x20Init();
         break;
@@ -467,6 +639,72 @@ bool Xsns05(uint32_t function) {
   }
   return result;
 }
+
+#ifdef BLINX
+
+bool Xsns05Name(bool first, bool json){
+  for (uint32_t i = 0; i < DS18X20Data.sensors; i++) {
+    uint8_t index = ds18x20_sensor[i].index;
+
+    if (ds18x20_sensor[index].valid) {   // Check for valid temperature
+      Ds18x20Name(i);
+      if (first){
+        if (json){
+          blinx_send_data_sensor(false, PSTR(","));
+        } else {
+          ResponseAppend_P(PSTR(","));
+        }
+      }
+      first = true;
+      if (json){
+        ResponseAppend_P(PSTR("\"%s\":{\"" D_JSON_TEMPERATURE "\":\"%4.1f\"}"), DS18X20Data.name,
+          getTemp_Ds18x20(
+            ds18x20_sensor[index].bufferBlinx->buffer[0].buffer[
+              ds18x20_sensor[index].bufferBlinx->buffer[0].get_last_index()
+            ],
+            index
+          )
+        );
+      } else{
+        blinx_send_data_sensor(false, PSTR("\"%s\":{\"" D_JSON_TEMPERATURE "\":\"%4.1f\"}"), DS18X20Data.name,
+          getTemp_Ds18x20(
+            ds18x20_sensor[index].bufferBlinx->buffer[0].buffer[
+              ds18x20_sensor[index].bufferBlinx->buffer[0].get_last_index()
+            ],
+            index
+          )
+        );
+      }
+    }
+  }
+  return first;
+}
+
+
+int Xsns05(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
+  if (Counter.any_counter) {
+    switch (function) {
+      case FUNC_WEB_SENSOR_BLINX_1s:
+        Ds18x20ShowBlinx(phantomType, phantomData, 0, index_csv);
+        break;
+      case FUNC_WEB_SENSOR_BLINX_10s:
+        Ds18x20ShowBlinx(phantomType, phantomData, 1, index_csv);
+        break;
+      case FUNC_WEB_SENSOR_BLINX_1m:
+        Ds18x20ShowBlinx(phantomType, phantomData, 2, index_csv);
+        break;
+      case FUNC_WEB_SENSOR_BLINX_10m:
+        Ds18x20ShowBlinx(phantomType, phantomData, 3, index_csv);
+        break;
+      case FUNC_WEB_SENSOR_BLINX_1h:
+        Ds18x20ShowBlinx(phantomType, phantomData, 4, index_csv);
+        break;
+    }
+  }
+  return -1;
+}
+
+#endif  // BLINX
 
 #endif  // USE_DS18x20
 #endif  // ESP32

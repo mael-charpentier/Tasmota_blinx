@@ -1440,6 +1440,24 @@ uint64_t WifiGetNtp(void) {
       tmp_fraction |= (uint32_t)packet_buffer[46] << 8;
       tmp_fraction |= (uint32_t)packet_buffer[47];
       uint32_t fraction = (((uint64_t)tmp_fraction) * 1000000000) >> 32;
+
+      #ifdef BLINX
+        // because of overflow with printf of an uint64_t, we need to separate the time into 2 uint32_t
+        timeSeparateBlinx t = infoConfigBlinx.timeSeparate(millis());
+        uint32_t fraction_ms = uint32_t(fraction/1000000);
+        uint32_t diff1900_1970 = 2208988800;
+        uint32_t time_ms, remove_s = 0;
+        
+        if (fraction_ms < t.ms){
+          time_ms = 1000 - (t.ms - fraction_ms);
+          remove_s = 1;
+        } else {
+          time_ms = fraction_ms - t.ms;
+        }
+
+        infoConfigBlinx.timeNTP = {secs_since_1900 - (diff1900_1970 + t.s + remove_s), time_ms};
+      #endif // BLINX
+
       return (((uint64_t)secs_since_1900) - 2208988800UL) * 1000000000 + fraction;
     }
     delay(10);

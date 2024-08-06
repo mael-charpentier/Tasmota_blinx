@@ -1568,8 +1568,10 @@ void DisplayBlinxGetData(void){
     ResponseAppendTime();
 
     // for input sensor : analog + i2c
-    XsnsXdrvCall(FUNC_JSON_APPEND);
+    //XsnsXdrvCall(FUNC_JSON_APPEND);
+    blinxDisplayInfoSensor();
 
+    /*
     // for the on off
     if (TasmotaGlobal.devices_present) {
         ResponseAppend_P(PSTR(",\"DEVICE\":{"));
@@ -1614,7 +1616,7 @@ void DisplayBlinxGetData(void){
         }
       }
       ResponseAppend_P(PSTR("}"));
-    }
+    }*/
     
     MqttAppendSensorUnits();
     ResponseJsonEnd();
@@ -1713,9 +1715,9 @@ enum SensorQuantity {
   JSON_BLINX_ANALOG2,
   JSON_BLINX_ANALOG3,
   JSON_BLINX_ANALOG4,
-  JSON_BLINX_PWM_VALUE,
-  JSON_BLINX_PWM_PHASE,
-  JSON_BLINX_PWM_FREQ,
+  JSON_BLINX_ANALOG0,
+  JSON_DISTANCE,
+  JSON_BLINX_COUNTER,
   JSON_BLINX_POWER };
 const char kSensorQuantity[] PROGMEM =
   D_JSON_TEMPERATURE "|"                                                        // degrees
@@ -1748,9 +1750,9 @@ const char kSensorQuantityBlinx[] PROGMEM =
   D_JSON_POWERUSAGE "|"                                                         // Watt
   D_JSON_CO2 "|"                                                                // ppm
   D_JSON_FREQUENCY "|"                                                          // Hz
-  D_JSON_BLINX_ANALOG1 "|" D_JSON_BLINX_ANALOG2 "|" D_JSON_BLINX_ANALOG3 "|"    // other, blinx
-  D_JSON_BLINX_ANALOG4 "|" D_JSON_BLINX_PWM_VALUE "|"                           // other, blinx
-  D_JSON_BLINX_PWM_PHASE "|" D_JSON_BLINX_PWM_FREQ ;                            // other, blinx
+  D_JSON_BLINX_ANALOG1 "|" D_JSON_BLINX_ANALOG2 "|" D_JSON_BLINX_ANALOG3 "|"
+  D_JSON_BLINX_ANALOG4 "|" D_JSON_BLINX_ANALOG0 "|" D_JSON_DISTANCE "|"
+  D_JSON_BLINX_COUNTER ;    // other, blinx
 #endif // BLINX
 
 void DisplayJsonValue(const char* topic, const char* device, const char* mkey, const char* value)
@@ -1772,6 +1774,9 @@ void DisplayJsonValue(const char* topic, const char* device, const char* mkey, c
   snprintf_P(source, sizeof(source), PSTR("%s%s%s%s"), device, (strlen(device))?"/":"", mkey, spaces);  // pow1/Voltage or Voltage if topic is empty (local sensor)
   if(Settings->display_mode == 6){
     quantity_code = GetCommandCode(quantity, sizeof(quantity), mkey, kSensorQuantityBlinx);
+    if ((-1 == quantity_code) || !strcmp_P(mkey, S_RSLT_POWER)) {
+      quantity_code = GetCommandCode(quantity, sizeof(quantity), device, kSensorQuantityBlinx);
+    }
   } else{
     quantity_code = GetCommandCode(quantity, sizeof(quantity), mkey, kSensorQuantity);
   }
@@ -1819,11 +1824,7 @@ void DisplayJsonValue(const char* topic, const char* device, const char* mkey, c
   else if (JSON_CO2 == quantity_code) {
     snprintf_P(svalue, sizeof(svalue), PSTR("%s" D_UNIT_PARTS_PER_MILLION), value);
   }
-  else if (JSON_FREQUENCY == quantity_code
-  #ifdef BLINX
-  || JSON_BLINX_PWM_FREQ == quantity_code
-  #endif // BLINX
-  ) {
+  else if (JSON_FREQUENCY == quantity_code) {
     snprintf_P(svalue, sizeof(svalue), PSTR("%s" D_UNIT_HERTZ), value);
   }
    else {

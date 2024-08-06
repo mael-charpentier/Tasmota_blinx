@@ -44,6 +44,9 @@ struct COUNTER {
   uint8_t no_pullup = 0;         // Counter input pullup flag (1 = No pullup)
   uint8_t pin_state = 0;         // LSB0..3 Last state of counter pin; LSB7==0 IRQ is FALLING, LSB7==1 IRQ is CHANGE
   bool any_counter = false;
+#ifdef BLINX
+  bufferSensor* bufferBlinx[MAX_COUNTERS] = {};
+#endif // BLINX
 
 } Counter;
 
@@ -171,6 +174,9 @@ void CounterInit(void)
   for (uint32_t i = 0; i < MAX_COUNTERS; i++) {
     if (PinUsed(GPIO_CNTR1, i)) {
       Counter.any_counter = true;
+#ifdef BLINX
+      Counter.bufferBlinx[i] = initBufferSensor(5);
+#endif // BLINX
       pinMode(Pin(GPIO_CNTR1, i), bitRead(Counter.no_pullup, i) ? INPUT : INPUT_PULLUP);
       if ((0 == Settings->pulse_counter_debounce_low) && (0 == Settings->pulse_counter_debounce_high) && !Settings->flag4.zerocross_dimmer) {
         Counter.pin_state = 0;
@@ -248,6 +254,60 @@ void CounterShow(bool json)
   }
 }
 
+#ifdef BLINX
+void sendFunction_counter(int32_t val, int i){
+  char counter[33];
+  if (bitRead(Settings->pulse_counter_type, i)) {
+    dtostrfd((double)val / 1000000, 6, counter);
+  } else {
+    snprintf_P(counter, sizeof(counter), PSTR("%lu"), val);
+  }
+
+
+  blinx_send_data_sensor(true, PSTR("%d"), counter);//"{s}" D_COUNTER "%d{m}%s%s{e}"),
+    //i +1, counter, (bitRead(Settings->pulse_counter_type, i)) ? " " D_UNIT_SECOND : "");
+}
+
+void CounterShowBlinx(uint32_t phantomType, uint32_t phantomData, uint32_t ind, uint32_t index_csv)
+{
+  if (index_csv == 0){
+    for (uint32_t i = 0; i < MAX_COUNTERS; i++) {
+      if (PinUsed(GPIO_CNTR1, i)) {
+        blinx_send_data_sensor(false, PSTR(",counter_%d"), i);
+      }
+    }
+  } else{
+    for (uint32_t i = 0; i < MAX_COUNTERS; i++) {
+      if (PinUsed(GPIO_CNTR1, i)) {
+        Counter.bufferBlinx[i]->buffer[ind].getData(index_csv, &sendFunction_counter, i);
+      }
+    }
+  }
+}
+
+void CounterGetData(void){
+  for (uint32_t i = 0; i < MAX_COUNTERS; i++) {
+    if (PinUsed(GPIO_CNTR1, i)) {
+      Counter.bufferBlinx[i]->buffer[0].save(RtcSettings.pulse_counter[i]);
+    }
+  }
+}
+void CounterGetBlinx(int32_t index) {
+  if(index == 0){
+    CounterGetData();
+    return;
+  }
+
+  for (int ind = 0; ind < index; ind++){
+    for (uint32_t i = 0; i < MAX_COUNTERS; i++) {
+      if (PinUsed(GPIO_CNTR1, i)) {
+        Counter.bufferBlinx[i]->save(ind+1);
+      }
+    }
+  }
+}
+#endif // BLINX
+
 /*********************************************************************************************\
  * Commands
 \*********************************************************************************************/
@@ -316,6 +376,23 @@ bool Xsns01(uint32_t function)
 
   if (Counter.any_counter) {
     switch (function) {
+  #ifdef BLINX
+        case FUNC_EVERY_1_SECOND_TIMER:
+          CounterGetBlinx(0);
+          break;
+        case FUNC_EVERY_10_SECOND:
+          CounterGetBlinx(1);
+          break;
+        case FUNC_EVERY_MINUTE:
+          CounterGetBlinx(2);
+          break;
+        case FUNC_EVERY_10_MINUTE:
+          CounterGetBlinx(3);
+          break;
+        case FUNC_EVERY_HOUR:
+          CounterGetBlinx(4);
+          break;
+  #endif  // BLINX
       case FUNC_EVERY_SECOND:
         CounterEverySecond();
         break;
@@ -353,5 +430,61 @@ bool Xsns01(uint32_t function)
   }
   return result;
 }
+
+#ifdef BLINX
+
+bool Xsns01Name(bool first, bool json){
+  for (uint32_t i = 0; i < MAX_COUNTERS; i++) {
+    if (PinUsed(GPIO_CNTR1, i)) {
+      if (first){
+        if (json){
+          ResponseAppend_P(PSTR(","));
+        } else {
+          blinx_send_data_sensor(false, PSTR(","));
+        }
+      }
+
+      char counter[33];
+      if (bitRead(Settings->pulse_counter_type, i)) {
+        dtostrfd((double)RtcSettings.pulse_counter[i] / 1000000, 6, counter);
+      } else {
+        snprintf_P(counter, sizeof(counter), PSTR("%lu"), RtcSettings.pulse_counter[i]);
+      }
+
+      first = true;
+      if (json){
+        ResponseAppend_P(PSTR("\"counter_%d\":{\"COUNTER\":\"%s\"}"), i+1, counter);
+      } else{
+        blinx_send_data_sensor(false, PSTR("\"counter_%d\":{\"COUNTER\":\"%s\"}"), i+1, counter);
+      }
+    }
+  }
+  return first;
+}
+
+int Xsns01(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
+  if (Counter.any_counter) {
+    switch (function) {
+      case FUNC_WEB_SENSOR_BLINX_1s:
+        CounterShowBlinx(phantomType, phantomData, 0, index_csv);
+        break;
+      case FUNC_WEB_SENSOR_BLINX_10s:
+        CounterShowBlinx(phantomType, phantomData, 1, index_csv);
+        break;
+      case FUNC_WEB_SENSOR_BLINX_1m:
+        CounterShowBlinx(phantomType, phantomData, 2, index_csv);
+        break;
+      case FUNC_WEB_SENSOR_BLINX_10m:
+        CounterShowBlinx(phantomType, phantomData, 3, index_csv);
+        break;
+      case FUNC_WEB_SENSOR_BLINX_1h:
+        CounterShowBlinx(phantomType, phantomData, 4, index_csv);
+        break;
+    }
+  }
+  return -1;
+}
+
+#endif  // BLINX
 
 #endif  // USE_COUNTER

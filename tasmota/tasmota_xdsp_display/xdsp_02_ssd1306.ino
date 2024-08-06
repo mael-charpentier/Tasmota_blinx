@@ -90,6 +90,11 @@ void SSD1306InitDriver(void) {
     }
 #endif
 
+#ifdef BLINX
+      SetDisplayDimmer(100);
+      ApplyDisplayDimmer();
+#endif // BLINX
+
     AddLog(LOG_LEVEL_INFO, PSTR("DSP: SSD1306"));
   }
 }
