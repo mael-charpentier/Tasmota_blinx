@@ -1,3 +1,6 @@
+# BLINX
+# generate the prefix tree and other function use in `tasmota/tasmota_xx2c_global/xsns_get_sensor_blinx.ino`
+
 def generate_cpp_functions(prefix_dict):
     cpp_code = ""
 
@@ -82,7 +85,8 @@ def generate_cpp_functions(prefix_dict):
 
     return cpp_code + all_sensor() + all_i2c_sensor()
 
-# element in the dict : {"name_sensor" : ["id_sensor", type_sensor, type_data], ...}, if only 1 type put 0, if only 1 data put 0
+# element in the dict : {"name_sensor" : ["id_sensor", type_sensor, type_data], ...},
+# if only 1 type put 0, if only 1 data put 0, and the id_sensor is the number after the `xsns_` in the file name of the sensor
 
 prefix_dict = {
     "counter": ["01",0, 0],
@@ -97,4 +101,5 @@ prefix_dict = {
 analog_name = ["analog_1A", "analog_1B", "analog_2A", "analog_2B"]
 
 cpp_code = generate_cpp_functions(prefix_dict)
-print(cpp_code)
+
+print("#ifdef BLINX\n\n" + cpp_code + "\n\n#endif // BLINX")

@@ -1167,6 +1167,7 @@ void XsnsCall_50MS_timer_blinx(TimerHandle_t xTimer){
     //int time1 = xTaskGetTickCount();
     infoConfigBlinx.number50ms++;
 
+    // do we also read the 1s ?
     if(infoConfigBlinx.number50ms == 20){
       infoConfigBlinx.updateTime(2, millis());
     } else {
@@ -1195,15 +1196,7 @@ void XsnsCall_50MS_timer_blinx(TimerHandle_t xTimer){
 
 TaskHandle_t XsnsCall_50MS_timer_blinx_handle = NULL;
 void begin_time_50ms_blinx(){
-  //TaskHandle_t xHandle = NULL;
-  //res = xTaskCreatePinnedToCore(XsnsCall_50MS_timer_blinx, "50msBlinx", stack, NULL, 1, xHandle, 1);
-  /*TimerHandle_t xAutoReloadTimer;
-  xAutoReloadTimer = xTimerCreate("50msBlinx",        // Name of the timer
-                                  pdMS_TO_TICKS(50),       // The period of the timer specified in ticks (500)
-                                  pdTRUE,                   // The timer will auto-reload when it expires
-                                  0,                        // Identifier of the timer
-                                  XsnsCall_50MS_timer_blinx); // Callback function
-  xTimerStart(xAutoReloadTimer, 0);*/
+  // create a task for a timer, to read the data on the sensor every 50ms
   xTaskCreate(XsnsCall_50MS_timer_blinx, "XsnsCall_50MS_timer_blinx", 4096 - 2800 + 2000
   , NULL, 10, &XsnsCall_50MS_timer_blinx_handle);
 

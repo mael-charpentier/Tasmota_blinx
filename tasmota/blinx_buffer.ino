@@ -51,10 +51,7 @@ idDeviceBlinx getIdDeviceSensorBlinx(int priority, int device, bool stop){
             return t;
         }
     }
-    idDeviceBlinx t;
-    t.id = nmb_total_sensor;
-    t.name = "";
-    return t;
+    return {nmb_total_sensor, ""};
 }
 
 void blinxGetInfoSensorAnalog(void){
@@ -67,6 +64,8 @@ void blinxGetInfoSensorAnalog(void){
         blinx_send_data_sensor(false, PSTR("\"%s\":{\"name\":\"%s\""), listName[i],
             nameSensor);
 
+        // if we want to add other info to send
+
         blinx_send_data_sensor(false, PSTR("}"));
 
         if (i < 5-1){
@@ -77,6 +76,7 @@ void blinxGetInfoSensorAnalog(void){
 }
 
 void blinxDisplayInfoSensor(void){
+    // info for analog
     String listName[5] = {"A1A", "A1B", "A2A", "A2B", "A0"};
     bool first = false;
     for (int i = 0; i<5; i++){
@@ -94,9 +94,9 @@ void blinxDisplayInfoSensor(void){
             nameSensor);
     }
     
+    // info for i2c
     blinxGetInfoSensorI2C(first, true);
-   
 }
 
 
-#endif
+#endif // BLINX

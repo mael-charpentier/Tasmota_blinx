@@ -550,13 +550,16 @@ void ButtonHandler(void) {
                       #ifdef BLINX
                         //AddLog(LOG_LEVEL_INFO, PSTR("button click : [%d]"), button_index);
                         if ((button_index == 6 || button_index == 7)){
+                          // for blinx, if a certain button (number 6 or 7) is press, then we will turn on (for a limited time) or off the display
                           if((Settings->display_mode == 6)){
                             DisplayClear();
                             uint16_t newDimmer = 0;
                             if(infoConfigBlinx.canShow){
+                              // turn off
                               infoConfigBlinx.canShow = false;
                             } else {
-                              infoConfigBlinx.timeDisplayDmmer = millis() + 600000;
+                              // turn on
+                              infoConfigBlinx.timeDisplayDimmer = millis() + 600000;
                               infoConfigBlinx.canShow = true;
                               newDimmer = 100;
                             }

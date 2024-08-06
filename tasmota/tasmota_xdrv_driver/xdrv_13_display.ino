@@ -1559,6 +1559,7 @@ void DisplayAllocLogBuffer(void)
 #ifdef BLINX
 
 void DisplayBlinxGetData(void){
+  // get the data to show on the display, if we show everything we got the last time
   if(disp_log_buffer_ptr == 0 || disp_log_buffer_ptr == disp_log_buffer_idx){
     DisplayClearLogBuffer();
     disp_log_buffer_idx = 0;
@@ -1571,53 +1572,6 @@ void DisplayBlinxGetData(void){
     //XsnsXdrvCall(FUNC_JSON_APPEND);
     blinxDisplayInfoSensor();
 
-    /*
-    // for the on off
-    if (TasmotaGlobal.devices_present) {
-        ResponseAppend_P(PSTR(",\"DEVICE\":{"));
-        for (uint32_t idx = 1; idx <= TasmotaGlobal.devices_present; idx++) {
-          ResponseAppend_P(PSTR("\"DEVICE_%d\":{\"Power\":%d}"),idx, bitRead(TasmotaGlobal.power, idx -1));
-
-          if (idx < TasmotaGlobal.devices_present){
-            ResponseAppend_P(PSTR(","));
-          }
-        }
-        ResponseAppend_P(PSTR("}"));
-    }
-    
-
-    // for the pwm
-    uint32_t number_pwm = 0;
-    for (uint32_t i = 0; i < MAX_PWMS; i++) {
-      if (PinUsed(GPIO_PWM1, i)) {
-        number_pwm ++;
-      }
-    }
-    if (number_pwm > 0){
-      uint32_t see_pwm = 0;
-      
-      ResponseAppend_P(PSTR(",\"PWM\":{"));
-      for (uint32_t i = 0; i < MAX_PWMS; i++) {
-        if (PinUsed(GPIO_PWM1, i)) {
-          see_pwm ++;
-          int32_t pin = Pin(GPIO_PWM1, i);
-          int32_t chan = analogGetChannel2(pin);
-
-          ResponseAppend_P(PSTR("\"PWM_%d\":{\"value\":%d,\"phase\":%d,\"freq\":%d}"),
-            i,
-            TasmotaGlobal.pwm_cur_value[i],
-            TasmotaGlobal.pwm_cur_phase[i],
-            ledcReadFreq2(chan)
-          );
-
-          if (see_pwm < number_pwm){
-            ResponseAppend_P(PSTR(","));
-          }
-        }
-      }
-      ResponseAppend_P(PSTR("}"));
-    }*/
-    
     MqttAppendSensorUnits();
     ResponseJsonEnd();
     
@@ -1710,15 +1664,18 @@ enum SensorQuantity {
   JSON_VOLTAGE,
   JSON_POWERUSAGE,
   JSON_CO2,
-  JSON_FREQUENCY,
-  JSON_BLINX_ANALOG1,
+  JSON_FREQUENCY
+#ifdef BLINX
+  , JSON_BLINX_ANALOG1,
   JSON_BLINX_ANALOG2,
   JSON_BLINX_ANALOG3,
   JSON_BLINX_ANALOG4,
   JSON_BLINX_ANALOG0,
   JSON_DISTANCE,
   JSON_BLINX_COUNTER,
-  JSON_BLINX_POWER };
+  JSON_BLINX_POWER
+#endif // BLINX
+};
 const char kSensorQuantity[] PROGMEM =
   D_JSON_TEMPERATURE "|"                                                        // degrees
   D_JSON_HUMIDITY "|" D_JSON_LIGHT "|" D_JSON_NOISE "|" D_JSON_AIRQUALITY "|"   // percentage
@@ -1771,7 +1728,7 @@ void DisplayJsonValue(const char* topic, const char* device, const char* mkey, c
 
   int quantity_code;
   #ifdef BLINX
-  snprintf_P(source, sizeof(source), PSTR("%s%s%s%s"), device, (strlen(device))?"/":"", mkey, spaces);  // pow1/Voltage or Voltage if topic is empty (local sensor)
+  snprintf_P(source, sizeof(source), PSTR("%s%s%s%s"), device, (strlen(device))?"/":"", mkey, spaces);  // pow1/Voltage or Voltage if device is empty (local sensor)
   if(Settings->display_mode == 6){
     quantity_code = GetCommandCode(quantity, sizeof(quantity), mkey, kSensorQuantityBlinx);
     if ((-1 == quantity_code) || !strcmp_P(mkey, S_RSLT_POWER)) {
@@ -2093,6 +2050,7 @@ void CmndDisplayMode(void) {
  * 3 = Day                  Local sensors and time               Local sensors and time
  * 4 = Mqtt left and time   Mqtt (incl local) sensors            Mqtt (incl local) sensors
  * 5 = Mqtt up and time     Mqtt (incl local) sensors and time   Mqtt (incl local) sensors and time
+ *
  * 6 = Blinx                Local sensors, name, ssid   Local sensors, name, ssid
 */
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 
@@ -2120,7 +2078,7 @@ void CmndDisplayMode(void) {
 
     #ifdef BLINX
     if (XdrvMailbox.payload == 6){
-      infoConfigBlinx.timeDisplayDmmer = millis() + 600000;
+      infoConfigBlinx.timeDisplayDimmer = millis() + 600000;
       disp_log_buffer_ptr = 0;
       DisplayBlinxGetData();
     }

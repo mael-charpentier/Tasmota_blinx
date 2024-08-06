@@ -116,6 +116,7 @@
 #ifdef BLINX
 
 // normaly define on the build
+/*
 #define SIZE_BUFFER_50MS 300
 #define SIZE_BUFFER_50MS_limit 100
 #define SIZE_BUFFER_50MS_Tampon 100
@@ -134,7 +135,9 @@
 #define SIZE_BUFFER_1H 100
 #define SIZE_BUFFER_1H_limit 3
 #define SIZE_BUFFER_1H_Tampon 5
+*/
 
+#define EPSILON_FOR_TIME_BLINX 5
 
 struct typeAnalog{
   String name;
@@ -143,43 +146,58 @@ struct typeAnalog{
   typeAnalog(String _name, int _id, int _priority) : name(_name), id(_id), priority(_priority){}
 };
 
-struct idDeviceBlinx { // This structure is named "myDataType"
+struct idDeviceBlinx {
   int id;
   String name;
 };
 
-struct timeSeparateBlinx { // This structure is named "myDataType"
-  uint32_t s;
-  uint32_t ms;
+struct timeSeparateBlinx {
+  uint32_t s; // store the timestamp in second
+  uint32_t ms; // store the millis second
 };
 
 struct {
-  uint32_t lastTime[6] = {0,0,0,0,0,0};
-  uint32_t timeNotSave[6] = {0,0,0,0,0,0};
+  uint32_t lastTime[6] = {0,0,0,0,0,0}; // last time we get the data to store it
+  uint32_t timeNotSave[6] = {0,0,0,0,0,0}; // how many data did we miss since the last time we get it
+  // what is the time of the last data of the buffer, to calculate the timestamp sent with the csv
   uint32_t timeShow[6] = {0,0,0,0,0,0};
+  // the time of the last data of the froozen buffer that we read to sent the data to the user
   uint32_t timeShowRead = -1;
+  // the timestamp of when the blinx start
   timeSeparateBlinx timeNTP = {0, 0};
+
+  // the different time (of the buffer) in millisecond
   uint32_t millis_second[6] = {50,1000,1000*10,1000*60,1000*60*10,1000*60*60};
 
+  // array of the different size :
+  // the size of the buffer
   uint32_t size_buffer[6] = {SIZE_BUFFER_50MS,SIZE_BUFFER_1S,SIZE_BUFFER_10S,SIZE_BUFFER_1M,SIZE_BUFFER_10M,SIZE_BUFFER_1H};
+  // the size of the tampon : when we read the buffer to send data, we can't overwrite the data. So we write in the tampon.
   uint32_t size_buffer_tampon[6] = {SIZE_BUFFER_50MS_Tampon,SIZE_BUFFER_1S_Tampon,SIZE_BUFFER_10S_Tampon,SIZE_BUFFER_1M_Tampon,SIZE_BUFFER_10M_Tampon,SIZE_BUFFER_1H_Tampon};
+  // the size of how many data can be lost before we restart from scratch
   uint32_t limit_not_save[6] = {SIZE_BUFFER_50MS_limit,SIZE_BUFFER_1S_limit,SIZE_BUFFER_10S_limit,SIZE_BUFFER_1M_limit,SIZE_BUFFER_10M_limit,SIZE_BUFFER_1H_limit};
+  // how many data did we save (how many data can we read in the buffer)
   uint32_t size_buffer_readable[6] = {0,0,0,0,0};
 
+  // do we display the wifi or the hostname
   bool displayWifi = true;
+  // can we show info on display or is it turn off (the display in on only for a small period of time, to not have any ghosting on the screen)
   bool canShow = true;
-  uint32_t timeDisplayDmmer = millis() + 600000;
+  // time before we turn off the display
+  uint32_t timeDisplayDimmer = millis() + 600000;
 
+  // are we reading data to send ?
   bool readData = false;
   
-  uint8_t pin_analog[5] = {2,3,4,5,8};
-  
+  // we have a timer to be sure that we read the data every 50ms, and each 20 times we also read the data (for the 1s)
   uint8_t number50ms = 0;
-
+  
+  // the pin for the analog port and the led/buzzer (8)
+  uint8_t pin_analog[5] = {2,3,4,5,8};
+  // the different senseur accepted for the analog
   typeAnalog typeAccept[12] = {typeAnalog("Relay", 224, 0), typeAnalog("Relay_i", 256, 0), typeAnalog("PWM", 416, 1), typeAnalog("PWM_i", 448, 1),
   typeAnalog("ADC Joystick", 3328, 2), typeAnalog("ADC Input", 4704, 2), typeAnalog("ADC Temp", 4736, 2), typeAnalog("ADC Light", 4768, 2),  typeAnalog("ADC Button", 4800, 2),
   typeAnalog("ADC Button_i", 4832, 2), typeAnalog("ADC Range", 4864, 2), typeAnalog("ADC CT Power", 4896, 2)};
-
 
   int find_id_type(String name, int priority = -1){
     for(auto el : typeAccept){
@@ -207,7 +225,15 @@ struct {
   }
 
   void updateTime(uint8_t stop, uint32_t new_time){
-    // uint32_t new_time =  millis(); // Rtc.millis();, rtc isn't define here, we will need to change the location of this function
+    // if stop = 1, we will update only for the 50ms
+    // if stop = 2, we will update for the 50ms and 1s
+
+    // if stop = 3, we will update only for the 10s
+    // if stop = 4, we will update for the 10s and 1m
+    // if stop = 5, we will update for the 10s, 1m and 10m
+    // if stop = 6, we will update for the 10s, 1m, 10m and 1h
+
+    // we have a seperation bettween the 1s and 10s, because it is manage at different place and we don't want to do it 2 times
     if(stop <= 2){
       for (uint8_t i = 0; i < stop; i ++){
         updateTime_i(i, new_time);
@@ -222,34 +248,45 @@ struct {
 
   void updateTime_i(uint8_t i, uint32_t new_time){
         if (lastTime[i] == 0){
-          timeNotSave[i] = 0;
           // nothing, it is the first time
+          timeNotSave[i] = 0;
         } else if(new_time < lastTime[i]){
-          // restart
+          // restart, if the new time is lower than the last one
           timeNotSave[i] = -1;
           size_buffer_readable[i] = 0;
           timeShow[i] = 0;
         }else{
-          int diff = (new_time-lastTime[i]-3)/millis_second[i] - 1; // -3 is for the small error, if we update the time 1 millisecond in delay, it is not that problematics
+          // `- EPSILON_FOR_TIME_BLINX` is for the small error in delay : if we update the time 1 millisecond in delay, we didn't lost a data
+          int diff = (new_time-lastTime[i] - EPSILON_FOR_TIME_BLINX) / millis_second[i] - 1;
+
           if (diff <= 0){
+            // we did't lost any data
             timeNotSave[i] = 0;
           } else if (diff >= limit_not_save[i] ){
-            // restart
+            // restart, we lost too many data
             timeNotSave[i] = -1;
             size_buffer_readable[i] = 0;
             timeShow[i] = 0;
           } else{
+            // we lost some data
             timeNotSave[i] = diff;
             size_buffer_readable[i] += diff;
             timeShow[i] += diff * millis_second[i];
           }
         }
+
         lastTime[i] = new_time;
+
         if(timeShow[i] == 0){
+          // if it is the first time/restart, we get the time of the last data
           timeShow[i] = new_time;
         } else{
+          // if not, we save the new time for the last data  we don't save the new time that you give me,
+          // because we use it to calculate the times of other data and we want a certain regularity
+          // (if we look at the buffer 2 times, for the same data the time should be the same).
           timeShow[i] += millis_second[i];
         }
+
         update_size_buffer_readable(i);
   }
 
@@ -264,65 +301,69 @@ struct {
   }
 
   timeSeparateBlinx timeSeparate(uint32_t time){
+    // separeate the time beetween second and millis
+    // we do it because formatP don't to show it, so we seperate it to be able to show it
     uint32_t b = time/1000;     // seconds
     uint32_t c = time - b*1000; // millis
     return {b, c};
   }
 
   timeSeparateBlinx addTimeSeparate(uint32_t time){
+    // add time (timestamp of blinx (when we start it) to now) to the ntp time (timestamp of 1970, to when we start blinx),
+    // to have the timestamp of 1970 to now, then we will separeate the time beetween second and millis
     timeSeparateBlinx t = timeSeparate(time + timeNTP.ms);
     return {t.s + timeNTP.s, t.ms};
   }
 
   timeSeparateBlinx getTime(uint32_t ind, uint32_t index, uint32_t offset){
+    // get the timestamp, to show in the csv of a certain row
     return addTimeSeparate(timeShowRead + millis_second[ind] * ( index - offset )) ;
-  }
-
-  char* get_int(int value) {
-    char* chunk = new char[4];
-    chunk[0] = char((value >> 24) & 0xFF);
-    chunk[1] = char((value >> 16) & 0xFF);
-    chunk[2] = char((value >> 8) & 0xFF);
-    chunk[3] = char((value) & 0xFF);
-    return chunk;
-  }
-
-  char* get_int_short(int value) {
-    char* chunk = new char[2];
-    chunk[0] = char((value) & 0xFF);
-    chunk[1] = char((value >> 8) & 0xFF);
-    return chunk;
   }
   
 } infoConfigBlinx;
 
+// type for function use in argument
 using FunctionType = void (*)(int32_t, int);
 using FunctionClampType = int32_t (*)(int32_t);
 
+
+// the buffer that will store the data
 struct bufferTime {
+  // the buffer (buffer + tampon) for the data : an circular array
   int32_t* buffer = nullptr;
 
+  // the nan value (the value that it will take if it is not in the range of the sensor)
   int32_t nanValue;
+  // the error value (the value that it will take if an error occur or didn't read the data)
   int32_t errorValue;
+  // do the sensor use these value
   bool existNanValue;
   bool existErrorValue;
+  // the function to know what to do with the nanValue
+  FunctionClampType clamp;
 
+  // the index for the next data in the in buffer
   uint32_t indexActual = 0;
+  // the buffer is a circular array, where is the begin (the first data) of the buffer
   uint32_t indexBegin = 0;
   
+  // if we read the data to sent it, we freeze it (so we need the index actual), to not have any overwrite while reading it
   uint32_t indexBeginRead = 0;
   uint32_t indexEndRead = 0;
   
+  // the type of the buffer (it is for which time)
   uint32_t typeBuffer;
+  // the diff with the previous buffer (e.g. in 1s buffer the diff is 20, because we need 20 data in the 50ms buffer to have 1 data in the 1s)
   uint32_t diff;
+  // the actual size of the buffer (buffer + tampon)
   uint32_t size;
 
 
-  bufferTime(uint32_t _typeBuffer, uint32_t _diff, int32_t _nanValue, bool _existNanValue, int32_t _errorValue, bool _existErrorValue) : diff(_diff), typeBuffer(_typeBuffer), nanValue(_nanValue), existNanValue(_existNanValue), errorValue(_errorValue), existErrorValue(_existErrorValue){
+  bufferTime(uint32_t _typeBuffer, uint32_t _diff, int32_t _nanValue, bool _existNanValue, int32_t _errorValue, bool _existErrorValue, FunctionClampType _clamp) : diff(_diff), typeBuffer(_typeBuffer), nanValue(_nanValue), existNanValue(_existNanValue), errorValue(_errorValue), existErrorValue(_existErrorValue), clamp(_clamp){
     size = infoConfigBlinx.size_buffer[typeBuffer]+infoConfigBlinx.size_buffer_tampon[typeBuffer];
     buffer = new int32_t[size];
     for (int i = 0; i < size; i++){
-      buffer[i] = 0;
+      buffer[i] = 0; // init the value to 0
     }
   }
   bufferTime() {
@@ -337,6 +378,7 @@ struct bufferTime {
           indexActual = 0;
       }
 
+      // update the index of the begining of the buffer if we get enough data
       if(infoConfigBlinx.size_buffer_readable[typeBuffer] >= infoConfigBlinx.size_buffer[typeBuffer]){
         indexBegin ++;
         if (indexBegin >= size) {
@@ -344,6 +386,7 @@ struct bufferTime {
         }
       }
 
+      // if we read data we don't update the index use when reading it
       if(!infoConfigBlinx.readData){
         indexEndRead = indexActual;
         indexBeginRead = indexBegin;
@@ -363,20 +406,48 @@ struct bufferTime {
       int32_t useValue = value;
       uint32_t lastIndex = get_last_index();
 
+      // if the value is an error, we will use the last save data
       if (existErrorValue && useValue == errorValue){
         useValue = buffer[lastIndex];
       }
 
       if (infoConfigBlinx.timeNotSave[typeBuffer] == -1){
+        // do we restart
         indexActual = 0;
         indexBegin = 0;
         indexBeginRead = 0;
         indexEndRead = 0;
       } else if (infoConfigBlinx.timeNotSave[typeBuffer] > 0){
-        int32_t newVal = (buffer[lastIndex] + useValue)/2;
-        if (existNanValue && (buffer[lastIndex] == nanValue || useValue == nanValue)){
-          newVal = nanValue;
+        // did we lost some data, then we will do the mean between the last value and the new value and save it for the lost data
+        // if one of them is the nanValue, then we will ask what the sensor wants : keep the nanValue or use an other one
+        int32_t newVal;
+
+        int32_t v1 = buffer[lastIndex];
+        int32_t v2 = useValue;
+
+        bool find_newVal = false;
+
+        if (existNanValue && (v1 == nanValue || v2 == nanValue)){
+          int32_t v = clamp(nanValue);
+          if (v == nanValue){
+            newVal = nanValue;
+            find_newVal = true;
+          } else {
+            if (v1 == nanValue){
+              v1 = v;
+            }
+            if (v2 == nanValue){
+              v2 = v;
+            }
+          }
         }
+
+        // do the mean
+        if (!find_newVal){
+          newVal = (v1 + v2)/2;
+        }
+        
+        // save the value for all the lost data
         for (int i = 0; i<infoConfigBlinx.timeNotSave[typeBuffer]; i++){
           buffer[indexActual] = newVal;
           updateIndex();
@@ -391,19 +462,28 @@ struct bufferTime {
       uint32_t max_ind = size;
       uint32_t index_data = (indexBeginRead+ind)%max_ind;
 
+      // we pass the data to the sensor so they can do what they want with it
       (*func)(buffer[index_data], argSupl);
   }
 };
 
-struct bufferSensor {
-  bufferTime* buffer;
-  uint32_t size;
-  FunctionClampType clamp; 
 
+// the struct that will store the different buffer (for each time) for a sensor
+struct bufferSensor {
+  // the array of buffer
+  bufferTime* buffer;
+  // the number of buffer that we have : 6 if we store the 50ms, else if 5
+  uint32_t size;
+
+  // the nan value (the value that it will take if it is not in the range of the sensor)
   int32_t nanValue;
+  // the error value (the value that it will take if an error occur or didn't read the data)
   int32_t errorValue;
+  // do the sensor use these value
   bool existNanValue;
   bool existErrorValue;
+  // the function to know what to do with the nanValue
+  FunctionClampType clamp;
 
   bufferSensor(uint32_t _size, FunctionClampType _clamp, int32_t _nanValue, bool _existNanValue, int32_t _errorValue, bool _existErrorValue) : buffer(nullptr), size(_size), clamp(_clamp), nanValue(_nanValue), existNanValue(_existNanValue), errorValue(_errorValue), existErrorValue(_existErrorValue) {
     buffer = new bufferTime[size];
@@ -416,17 +496,24 @@ struct bufferSensor {
   }
 
   void activate(uint32_t ind, uint32_t type, uint32_t diff){
-    buffer[ind] = bufferTime(type, diff, nanValue, existNanValue, errorValue, existErrorValue);
+    buffer[ind] = bufferTime(type, diff, nanValue, existNanValue, errorValue, existErrorValue, clamp);
   }
 
   void save(uint32_t ind){
+      // save the data in the buffer, for other time than the first one (50ms or 1s)
+      // to do it we will do a mean of n data of the buffer before (e.g. for 10s it will be a mean of 10 data of 1s)
+
+      // if inside the data use for the mean, we have a nanValue, than we will ask what the sensor wants :
+      // keep the nanValue (and not do the mean) or use an other one value
+
       if (buffer[ind-1].buffer != nullptr) {
         uint32_t sum = 0;
         uint32_t index = buffer[ind-1].indexActual;
         int32_t indexDiff = index - buffer[ind].diff;
         uint32_t lenghtIndex = infoConfigBlinx.size_buffer_readable[buffer[ind-1].typeBuffer];
         uint32_t buffer_value = 0;
-        if (lenghtIndex < buffer[ind].diff){
+
+        if (lenghtIndex < buffer[ind].diff){ // if we did get enough data to do the mean, then we will repeat the first data we got
           buffer_value = buffer[ind-1].buffer[0];
           if (existNanValue && buffer_value == nanValue){
             buffer_value = clamp(buffer_value);
@@ -435,9 +522,11 @@ struct bufferSensor {
               return;
             }
           }
+
           for (uint32_t y = 0; y < (buffer[ind].diff - lenghtIndex); y++) {
             sum += buffer_value;
           }
+
           for (uint32_t y = 0; y < index; y++) {
             buffer_value = buffer[ind-1].buffer[y];
               if (existNanValue && buffer_value == nanValue){
@@ -1158,6 +1247,7 @@ void setup(void) {
 
 
 #ifdef BLINX
+  // create the task for the timer, for the 50ms read data
   begin_time_50ms_blinx();
 #endif // BLINX
 }
@@ -1251,23 +1341,21 @@ void Scheduler(void) {
 
   static int32_t whatTime = -1;
 
-  //static uint32_t state_50msecond_before = 0;               // State 50msecond timer
-  static uint32_t state_second_before = 0;                  // State second timer
   static uint32_t state_10second_before = 0;                // State 10 second timer
   static uint32_t state_1minute_before = 0;                 // State minute timer
   static uint32_t state_10minute_before = 0;                // State 10 minute timer
   static uint32_t state_1hour_before = 0;                   // State hour timer
   
+  // what do we need to do ?
   if (TimeReached(state_1hour_before)) {
     infoConfigBlinx.updateTime(6, millis());//Rtc.millis);
 
+    // update the time
     SetNextTimeInterval(state_1hour_before, 60*60*1000);
     SetNextTimeInterval(state_10minute_before, 60*10*1000);
     SetNextTimeInterval(state_1minute_before, 60*1000);
     SetNextTimeInterval(state_10second_before, 10*1000);
-    SetNextTimeInterval(state_second_before, 1000);
-    //SetNextTimeInterval(state_50msecond_before, 50);
-    //XsnsCall(FUNC_PREP_DATA);
+    // specify what we need to do
     whatTime = FUNC_EVERY_HOUR;
   } else if (TimeReached(state_10minute_before)) {
     infoConfigBlinx.updateTime(5, millis());//Rtc.millis);
@@ -1275,42 +1363,19 @@ void Scheduler(void) {
     SetNextTimeInterval(state_10minute_before, 60*10*1000);
     SetNextTimeInterval(state_1minute_before, 60*1000);
     SetNextTimeInterval(state_10second_before, 10*1000);
-    SetNextTimeInterval(state_second_before, 1000);
-    //SetNextTimeInterval(state_50msecond_before, 50);
-    //XsnsCall(FUNC_PREP_DATA);
     whatTime = FUNC_EVERY_10_MINUTE;
   } else if (TimeReached(state_1minute_before)) {
     infoConfigBlinx.updateTime(4, millis());//Rtc.millis);
 
     SetNextTimeInterval(state_1minute_before, 60*1000);
     SetNextTimeInterval(state_10second_before, 10*1000);
-    SetNextTimeInterval(state_second_before, 1000);
-    //SetNextTimeInterval(state_50msecond_before, 50);
-    //XsnsCall(FUNC_PREP_DATA);
     whatTime = FUNC_EVERY_MINUTE;
   } else if (TimeReached(state_10second_before)) {
     infoConfigBlinx.updateTime(3, millis());//Rtc.millis);
 
     SetNextTimeInterval(state_10second_before, 10*1000);
-    SetNextTimeInterval(state_second_before, 1000);
-    //SetNextTimeInterval(state_50msecond_before, 50);
-    //XsnsCall(FUNC_PREP_DATA);
     whatTime = FUNC_EVERY_10_SECOND;
-  } /*else if (TimeReached(state_second_before)) {
-    infoConfigBlinx.updateTime(2, RtcMillisBrut());//Rtc.millis);
-
-    SetNextTimeInterval(state_second_before, 1000);
-    //SetNextTimeInterval(state_50msecond_before, 50);
-    //XsnsCall(FUNC_PREP_DATA);
-    whatTime = FUNC_EVERY_SECOND;
-  }/* else if (TimeReached(state_50msecond_before)) {
-    infoConfigBlinx.updateTime(1, RtcMillisBrut());//Rtc.millis);
-
-    SetNextTimeInterval(state_50msecond_before, 50);
-    XsnsCall(FUNC_PREP_DATA);
-    whatTime = FUNC_EVERY_50_MSECOND;
-  }*/
-
+  }
   #endif // BLINX
 
   static uint32_t state_50msecond = 0;             // State 50msecond timer
@@ -1321,11 +1386,7 @@ void Scheduler(void) {
     RotaryHandler();
 #endif  // ROTARY_V1
 
-  //#ifdef BLINX
-  //  XdrvCall(FUNC_EVERY_50_MSECOND);
-  //#else
-    XdrvXsnsCall(FUNC_EVERY_50_MSECOND);
-  //#endif // BLINX
+  XdrvXsnsCall(FUNC_EVERY_50_MSECOND);
   }
 
   static uint32_t state_100msecond = 0;            // State 100msecond timer
@@ -1347,17 +1408,12 @@ void Scheduler(void) {
     SetNextTimeInterval(state_second, 1000);
     PerformEverySecond();
     XdrvCall(FUNC_ACTIVE);
-
-  #ifdef BLINX
-    XdrvCall(FUNC_EVERY_SECOND);
-  #else
     XdrvXsnsCall(FUNC_EVERY_SECOND);
-  #endif // BLINX
   }
 
 
   #ifdef BLINX
-  // get the data
+    // get the data
     if (whatTime != -1){
       XsnsCall(whatTime);
       whatTime = -1;
