@@ -204,60 +204,53 @@ bool Sht3xReadBlinx(uint32_t sensor, uint16_t &t, uint16_t &h) {
 
 void Sht3xGetData() {
   uint16_t t, h;
-  char types[11];
 
   for (uint32_t i = 0; i < sht3x_count; i++) {
     if (Sht3xReadBlinx(i, t, h)) {
-      strlcpy(types, sht3x_sensors[i].types, sizeof(types));
-      if (sht3x_count > 1) {
-        snprintf_P(types, sizeof(types), PSTR("%s%c%02X"), sht3x_sensors[i].types, IndexSeparator(), sht3x_sensors[i].address);  // "SHT3X-0xXX"
-      }
       bufferSensor_Sht3x[0][i]->buffer[0].save(t);
       bufferSensor_Sht3x[1][i]->buffer[0].save(h);
     }
   }
 }
 
-void Sht3xGeneral(uint8_t ind) {
-  if(ind == 0){
+void Sht3xGeneral(uint8_t index) {
+  if(index == 0){
     Sht3xGetData();
     return;
   }
 
-  for (uint32_t i = 0; i < sht3x_count; i++) {
-    for (uint8_t y = 0; y < 2; y++){
-      if (bufferSensor_Sht3x[y][i] == nullptr) {
-        bufferSensor_Sht3x[y][i] = initBufferSensor(5);
-        bufferSensor_Sht3x[y][i]->buffer[ind].save(0);
-      } else{
-        bufferSensor_Sht3x[y][i]->save(ind);
+  for (int ind = 0; ind < index; ind++){
+    for (uint32_t i = 0; i < sht3x_count; i++) {
+      for (uint8_t y = 0; y < 2; y++){
+        if (bufferSensor_Sht3x[y][i] == nullptr) {
+          bufferSensor_Sht3x[y][i] = initBufferSensor(5);
+          bufferSensor_Sht3x[y][i]->buffer[ind+1].save(0);
+        } else{
+          bufferSensor_Sht3x[y][i]->save(ind+1);
+        }
       }
     }
   }
 }
 
 
-void sendFunction_sht3x_tem(uint16_t val, int _){
+void sendFunction_sht3x_tem(int32_t val, int _){
     float t = ((float)(val * 175) / 65535.0) - 45.0;
     t = ConvertTemp(t);
-    blinx_send_data_sensor(true, PSTR("%*_f" D_UNIT_DEGREE "%c"), Settings->flag2.temperature_resolution, &t, TempUnit());
+    blinx_send_data_sensor(true, PSTR("%6.2f"),t);// D_UNIT_DEGREE "%c"), t, TempUnit());
 }
-void sendFunction_sht3x_hum(uint16_t val, int _){
+void sendFunction_sht3x_hum(int32_t val, int _){
     float h = ((float)(val * 100) / 65535.0);
     h = ConvertHumidity(h);
-    char parameter[FLOATSZ];
-    dtostrfd(h, Settings->flag2.humidity_resolution, parameter);
-    blinx_send_data_sensor(true, PSTR("%s" D_UNIT_PERCENT), parameter);
+    blinx_send_data_sensor(true, PSTR("%6.2f"), h);// D_UNIT_PERCENT), h);//PSTR("%s" D_UNIT_PERCENT), parameter);
 }
-void sendFunction_sht3x_hum_sht4x(uint16_t val, int _){
+void sendFunction_sht3x_hum_sht4x(int32_t val, int _){
     float h = ((float)(val * 125) / 65535.0) - 6.0;
     h = ConvertHumidity(h);
-    char parameter[FLOATSZ];
-    dtostrfd(h, Settings->flag2.humidity_resolution, parameter);
-    blinx_send_data_sensor(true, PSTR("%s" D_UNIT_PERCENT), parameter);
+    blinx_send_data_sensor(true, PSTR("%6.2f"), h);// D_UNIT_PERCENT), h);//PSTR("%s" D_UNIT_PERCENT), parameter);
 }
 
-void Sht3xShow_blinx(uint32_t phantomType, uint32_t phantomData, uint8_t ind, uint32_t index_csv) {
+void Sht3xShow_blinx(uint32_t phantomType, uint32_t phantomData, uint32_t ind, uint32_t index_csv) {
   if (phantomType == 0){
     Sht3xShow_blinx(1, phantomData, ind, index_csv);
     Sht3xShow_blinx(2, phantomData, ind, index_csv);
@@ -272,11 +265,14 @@ void Sht3xShow_blinx(uint32_t phantomType, uint32_t phantomData, uint8_t ind, ui
   uint8_t type_sensor = phantomType - 1;
   uint8_t temp_humi = phantomData - 1;
 
+  String chart;
   
   char name[5];
   if(temp_humi == 0){
+    chart = "0..100";
     strcpy(name, "temp");
   } else {
+    chart = "";
     strcpy(name, "humi");
   }
 
@@ -288,7 +284,7 @@ void Sht3xShow_blinx(uint32_t phantomType, uint32_t phantomData, uint8_t ind, ui
 
       strlcpy(types_blinx_sht3x, sht3x_sensors[i].types, sizeof(types_blinx_sht3x));
 
-      blinx_send_data_sensor(false, PSTR(",sht3x_%s_%s"), name, types_blinx_sht3x);
+      blinx_send_data_sensor(false, PSTR(",%s_%s:%s"), types_blinx_sht3x, name, chart);
     }
   } else{
     for (uint32_t i = 0; i < sht3x_count; i++) {
@@ -344,7 +340,7 @@ bool Xsns14(uint32_t function) {
   else if (sht3x_count) {
     switch (function) {
   #ifdef BLINX
-        case FUNC_EVERY_SECOND:
+        case FUNC_EVERY_1_SECOND_TIMER:
           Sht3xGeneral(0);
           break;
         case FUNC_EVERY_10_SECOND:
@@ -374,23 +370,31 @@ bool Xsns14(uint32_t function) {
 }
 
 #ifdef BLINX
+bool Xsns14Name(bool first, bool json){
+  float t, h;
+  char types_blinx_sht3x[11];
+  for (uint32_t i = 0; i < sht3x_count; i++) {
+    if (Sht3xRead(i, t, h)) {
+      t = ConvertTemp(t);
+      h = ConvertHumidity(h);
+      strlcpy(types_blinx_sht3x, sht3x_sensors[i].types, sizeof(types_blinx_sht3x));
 
-int Xsns14_size_data(uint32_t phantomType = 0, uint32_t phantomData = 0){ // TODO number not true
-  if(phantomType == 2){
-    if(phantomData = 1){
-      return 7;
-    } else{
-      return 5;
+      if (first){
+        if (json){
+          ResponseAppend_P(PSTR(","));
+        } else{
+          blinx_send_data_sensor(false, PSTR(","));
+        }
+      }
+      first = true;
+      if (json){
+        ResponseAppend_P(PSTR("\"%s\":{\"" D_JSON_TEMPERATURE "\":\"%4.1f\", \"" D_JSON_HUMIDITY "\":\"%4.1f\"}"), types_blinx_sht3x, t, h);
+      } else{
+        blinx_send_data_sensor(false, PSTR("\"%s\":{\"" D_JSON_TEMPERATURE "\":\"%4.1f\", \"" D_JSON_HUMIDITY "\":\"%4.1f\"}"), types_blinx_sht3x, t, h);
+      }
     }
   }
-  return 0;
-}
-
-int Xsns14_size_name(uint32_t phantomType = 0, uint32_t phantomData = 0){
-  if(phantomType == 2){
-    return 16;
-  }
-  return 0;
+  return first;
 }
 
 int Xsns14(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
@@ -402,10 +406,6 @@ int Xsns14(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint
   }
   else if (sht3x_count) {
     switch (function) {
-        case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
-          return Xsns14_size_data(phantomType, phantomData);
-        case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
-          return Xsns14_size_name(phantomType, phantomData);
         case FUNC_WEB_SENSOR_BLINX_1s:
           Sht3xShow_blinx(phantomType, phantomData, 0, index_csv);
           break;

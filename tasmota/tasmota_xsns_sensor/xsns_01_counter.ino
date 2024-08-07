@@ -255,7 +255,7 @@ void CounterShow(bool json)
 }
 
 #ifdef BLINX
-void sendFunction_counter(uint16_t val, int i){
+void sendFunction_counter(int32_t val, int i){
   char counter[33];
   if (bitRead(Settings->pulse_counter_type, i)) {
     dtostrfd((double)val / 1000000, 6, counter);
@@ -264,11 +264,11 @@ void sendFunction_counter(uint16_t val, int i){
   }
 
 
-  blinx_send_data_sensor(true, PSTR("{s}" D_COUNTER "%d{m}%s%s{e}"),
-    i +1, counter, (bitRead(Settings->pulse_counter_type, i)) ? " " D_UNIT_SECOND : "");
+  blinx_send_data_sensor(true, PSTR("%d"), counter);//"{s}" D_COUNTER "%d{m}%s%s{e}"),
+    //i +1, counter, (bitRead(Settings->pulse_counter_type, i)) ? " " D_UNIT_SECOND : "");
 }
 
-void CounterShowBlinx(uint32_t phantomType, uint32_t phantomData, uint8_t ind, uint32_t index_csv)
+void CounterShowBlinx(uint32_t phantomType, uint32_t phantomData, uint32_t ind, uint32_t index_csv)
 {
   if (index_csv == 0){
     for (uint32_t i = 0; i < MAX_COUNTERS; i++) {
@@ -292,15 +292,17 @@ void CounterGetData(void){
     }
   }
 }
-void CounterGetBlinx(uint8_t ind) {
-  if(ind == 0){
+void CounterGetBlinx(int32_t index) {
+  if(index == 0){
     CounterGetData();
     return;
   }
 
-  for (uint32_t i = 0; i < MAX_COUNTERS; i++) {
-    if (PinUsed(GPIO_CNTR1, i)) {
-      Counter.bufferBlinx[i]->save(ind);
+  for (int ind = 0; ind < index; ind++){
+    for (uint32_t i = 0; i < MAX_COUNTERS; i++) {
+      if (PinUsed(GPIO_CNTR1, i)) {
+        Counter.bufferBlinx[i]->save(ind+1);
+      }
     }
   }
 }
@@ -375,6 +377,9 @@ bool Xsns01(uint32_t function)
   if (Counter.any_counter) {
     switch (function) {
   #ifdef BLINX
+        case FUNC_EVERY_1_SECOND_TIMER:
+          CounterGetBlinx(0);
+          break;
         case FUNC_EVERY_10_SECOND:
           CounterGetBlinx(1);
           break;
@@ -390,9 +395,6 @@ bool Xsns01(uint32_t function)
   #endif  // BLINX
       case FUNC_EVERY_SECOND:
         CounterEverySecond();
-  #ifdef BLINX
-          CounterGetBlinx(0);
-  #endif  // BLINX
         break;
       case FUNC_JSON_APPEND:
         CounterShow(1);
@@ -431,21 +433,38 @@ bool Xsns01(uint32_t function)
 
 #ifdef BLINX
 
-int Xsns01_size_data(uint32_t phantomType = 0, uint32_t phantomData = 0){ // TODO number not true
-  return 0;
-}
+bool Xsns01Name(bool first, bool json){
+  for (uint32_t i = 0; i < MAX_COUNTERS; i++) {
+    if (PinUsed(GPIO_CNTR1, i)) {
+      if (first){
+        if (json){
+          ResponseAppend_P(PSTR(","));
+        } else {
+          blinx_send_data_sensor(false, PSTR(","));
+        }
+      }
 
-int Xsns01_size_name(uint32_t phantomType = 0, uint32_t phantomData = 0){
-  return 0;
+      char counter[33];
+      if (bitRead(Settings->pulse_counter_type, i)) {
+        dtostrfd((double)RtcSettings.pulse_counter[i] / 1000000, 6, counter);
+      } else {
+        snprintf_P(counter, sizeof(counter), PSTR("%lu"), RtcSettings.pulse_counter[i]);
+      }
+
+      first = true;
+      if (json){
+        ResponseAppend_P(PSTR("\"counter_%d\":{\"COUNTER\":\"%s\"}"), i+1, counter);
+      } else{
+        blinx_send_data_sensor(false, PSTR("\"counter_%d\":{\"COUNTER\":\"%s\"}"), i+1, counter);
+      }
+    }
+  }
+  return first;
 }
 
 int Xsns01(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
   if (Counter.any_counter) {
     switch (function) {
-      case FUNC_WEB_SENSOR_BLINX_SIZE_DATA:
-        return Xsns01_size_data(phantomType, phantomData);
-      case FUNC_WEB_SENSOR_BLINX_SIZE_NAME:
-        return Xsns01_size_name(phantomType, phantomData);
       case FUNC_WEB_SENSOR_BLINX_1s:
         CounterShowBlinx(phantomType, phantomData, 0, index_csv);
         break;

@@ -1735,6 +1735,7 @@ const char kSensorQuantity[] PROGMEM =
   D_JSON_FREQUENCY ;                                                            // Hz
 
 #ifdef BLINX
+// what we want to show on the display
 const char kSensorQuantityBlinx[] PROGMEM =
   D_JSON_TEMPERATURE "|"                                                        // degrees
   D_JSON_HUMIDITY "|" D_JSON_LIGHT "|" D_JSON_NOISE "|" D_JSON_AIRQUALITY "|"   // percentage

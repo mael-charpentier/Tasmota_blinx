@@ -830,6 +830,22 @@ uint16_t VL53L0X::readRangeContinuousMillimeters(void)
 
   return range;
 }
+uint16_t VL53L0X::readRangeContinuousMillimetersWithoutLoop(void)
+{
+
+  if ((readReg(RESULT_INTERRUPT_STATUS) & 0x07) == 0)
+  {
+    return 65535;
+  }
+
+  // assumptions: Linearity Corrective Gain is 1000 (default);
+  // fractional ranging is not enabled
+  uint16_t range = readReg16Bit(RESULT_RANGE_STATUS + 10);
+
+  writeReg(SYSTEM_INTERRUPT_CLEAR, 0x01);
+
+  return range;
+}
 
 // Performs a single-shot range measurement and returns the reading in
 // millimeters

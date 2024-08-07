@@ -2,6 +2,8 @@
 
 #ifdef BLINX
 
+// prefix tree to find sensor for the name
+
 int blinxFindSensor(String input, size_t l, uint32_t function, uint32_t index_csv){
     if (l == 0) { return -1; }
     else if (input[0] == 'a'){
@@ -587,8 +589,9 @@ int blinxFindSensor_VL53L0(String input, size_t l, uint32_t function, uint32_t i
 }
 
 
-
-
+int blinxFindSensorAll(uint32_t function){
+    return blinxFindSensorAll(function, 0);
+}
 int blinxFindSensorAll(uint32_t function, uint32_t index_csv){
    int sum = 0;
    sum += Xsns01(function, index_csv, 0, 0) + 1;
@@ -607,7 +610,6 @@ int blinxFindSensorAll(uint32_t function, uint32_t index_csv){
    return sum;
 }
 
-
 void blinxGetInfoSensorI2C(bool first, bool json){
     first = Xsns01Name(first, json);
     //Xsns02Name();
@@ -615,73 +617,6 @@ void blinxGetInfoSensorI2C(bool first, bool json){
     first = Xsns05Name(first, json);
     first = Xsns14Name(first, json);
     first = Xsns45Name(first, json);
-}
-
-idDeviceBlinx getIdDeviceSensorBlinx(int priority, int device, bool stop){
-    int nmb_total_sensor = 0;
-    if (priority != 0){
-        idDeviceBlinx t = getIdDeviceSensorBlinx(priority-1, device, false);
-        nmb_total_sensor = t.id;
-    }
-    for (int y = 0; y<5; y++){
-        String result = infoConfigBlinx.find_name_type(Settings->my_gp.io[infoConfigBlinx.pin_analog[y]], priority);
-        if (result != ""){
-            nmb_total_sensor ++;
-        }
-        if (stop && y == device){
-            idDeviceBlinx t;
-            t.id = nmb_total_sensor;
-            t.name = result;
-            return t;
-        }
-    }
-    idDeviceBlinx t;
-    t.id = nmb_total_sensor;
-    t.name = "";
-    return t;
-}
-
-void blinxGetInfoSensorAnalog(void){
-    String listName[5] = {"1A", "1B", "2A", "2B", "default"};
-    for (int i = 0; i<5; i++){
-        String nameSensor = infoConfigBlinx.find_name_type(Settings->my_gp.io[infoConfigBlinx.pin_analog[i]]);
-        if (nameSensor == ""){
-            nameSensor = "None";
-        }
-        blinx_send_data_sensor(false, PSTR("\"%s\":{\"name\":\"%s\""), listName[i],
-            nameSensor);
-        
-        blinx_send_data_sensor(false, PSTR("}"));
-
-        if (i < 5-1){
-            blinx_send_data_sensor(false, PSTR(","));
-        }
-    }
-   
-}
-
-void blinxDisplayInfoSensor(void){
-    String listName[5] = {"A1A", "A1B", "A2A", "A2B", "A0"};
-    bool first = false;
-    for (int i = 0; i<5; i++){
-        String nameSensor = infoConfigBlinx.find_name_type(Settings->my_gp.io[infoConfigBlinx.pin_analog[i]]);
-        if (nameSensor == ""){
-            nameSensor = "None";
-        }
-
-        if(first){
-            ResponseAppend_P(PSTR(","));
-        }
-        first = true;
-
-        ResponseAppend_P(PSTR("\"%s\":{\"%s\":\"value\"}"), listName[i],
-            nameSensor);
-
-        // Xsns02(FUNC_DISPLAY_INFO);
-    }
-    
-    blinxGetInfoSensorI2C(first, true);
-   
 }
 
 #endif

@@ -116,129 +116,166 @@
 #ifdef BLINX
 
 // normaly define on the build
-#define SIZE_BUFFER_50MS 50
-#define SIZE_BUFFER_1S 30
-#define SIZE_BUFFER_10S 30
-#define SIZE_BUFFER_1M 30
-#define SIZE_BUFFER_10M 30
-#define SIZE_BUFFER_1H 30
+#define SIZE_BUFFER_50MS 300
+#define SIZE_BUFFER_50MS_limit 100
+#define SIZE_BUFFER_50MS_Tampon 100
+#define SIZE_BUFFER_1S 300
+#define SIZE_BUFFER_1S_limit 10
+#define SIZE_BUFFER_1S_Tampon 100
+#define SIZE_BUFFER_10S 250
+#define SIZE_BUFFER_10S_limit 6
+#define SIZE_BUFFER_10S_Tampon 50
+#define SIZE_BUFFER_1M 200
+#define SIZE_BUFFER_1M_limit 3
+#define SIZE_BUFFER_1M_Tampon 5
+#define SIZE_BUFFER_10M 150
+#define SIZE_BUFFER_10M_limit 3
+#define SIZE_BUFFER_10M_Tampon 5
+#define SIZE_BUFFER_1H 100
+#define SIZE_BUFFER_1H_limit 3
+#define SIZE_BUFFER_1H_Tampon 5
+
+
+struct typeAnalog{
+  String name;
+  int id;
+  int priority;
+  typeAnalog(String _name, int _id, int _priority) : name(_name), id(_id), priority(_priority){}
+};
 
 struct idDeviceBlinx { // This structure is named "myDataType"
   int id;
   String name;
 };
 
-struct bufferTime {
-  uint16_t* buffer = nullptr;
-  uint8_t index = 0;
-  uint8_t size;
-  uint8_t diff;
-
-
-  bufferTime(uint8_t _size, uint8_t _diff) : diff(_diff), size(_size){
-    buffer = new uint16_t[size];
-    for (int i = 0; i < size; i++){
-      buffer[i] = 0;
-    }
-  }
-  bufferTime() {
-    diff = 0;
-    size = 0;
-  }
-
-  void save(uint16_t value){
-      buffer[index] = value;
-      index++;
-      if (index >= size) {
-          index = 0;
-      }
-  }
-
-  void getData(uint8_t ind, FunctionType func, int argSupl = 0){
-      uint8_t max_ind = size;
-      uint8_t index_data = (index+ind)%max_ind;
-
-      (*func)(buffer[index_data], argSupl);
-  }
-};
-
-struct bufferSensor {
-  bufferTime* buffer;
-  uint8_t size;
-
-  bufferSensor(uint8_t _size) : buffer(nullptr), size(_size) {
-    buffer = new bufferTime[size];
-  }
-
-  void activate(uint8_t ind, uint8_t size, uint8_t diff){
-    buffer[ind] = bufferTime(size, diff);
-  }
-
-  void save(uint8_t ind){
-      if (buffer[ind-1].buffer != nullptr) {
-        uint32_t sum = 0;
-        uint8_t index = buffer[ind-1].index;
-        uint8_t indexDiff = index - buffer[ind].diff;
-
-        if (indexDiff >= 0){
-          for (uint32_t y = indexDiff; y < index; y++) {
-            sum += buffer[ind-1].buffer[y];
-          }
-        } else {
-          for (uint32_t y = 0; y < index; y++) {
-            sum += buffer[ind-1].buffer[y];
-          }
-          for (uint32_t y = (index + indexDiff); y < index; y++) {
-            sum += buffer[ind-1].buffer[y];
-          }
-        }
-        buffer[ind].save((uint16_t)(sum / buffer[ind].diff));
-      }
-  }
-
-  void mapData(uint8_t ind, FunctionType func, int argSupl = 0){
-      uint8_t max_ind = buffer[ind].size;
-      uint8_t index = (buffer[ind].index+1)%max_ind;
-
-      for (uint32_t y = 0; y < max_ind; y++) {
-        (*func)(buffer[ind].buffer[index], argSupl);
-
-        index = (index+1);
-        if(index == max_ind){
-          index = 0;
-        }
-      }
-  }
-};
-
-struct timeBlinx {
-  uint32_t millis_second;
-  uint32_t ind;
+struct timeSeparateBlinx { // This structure is named "myDataType"
+  uint32_t s;
+  uint32_t ms;
 };
 
 struct {
-  uint32_t time[6] = {0,0,0,0,0,0};
+  uint32_t lastTime[6] = {0,0,0,0,0,0};
+  uint32_t timeNotSave[6] = {0,0,0,0,0,0};
+  uint32_t timeShow[6] = {0,0,0,0,0,0};
+  uint32_t timeShowRead = -1;
+  timeSeparateBlinx timeNTP = {0, 0};
+  uint32_t millis_second[6] = {50,1000,1000*10,1000*60,1000*60*10,1000*60*60};
+
+  uint32_t size_buffer[6] = {SIZE_BUFFER_50MS,SIZE_BUFFER_1S,SIZE_BUFFER_10S,SIZE_BUFFER_1M,SIZE_BUFFER_10M,SIZE_BUFFER_1H};
+  uint32_t size_buffer_tampon[6] = {SIZE_BUFFER_50MS_Tampon,SIZE_BUFFER_1S_Tampon,SIZE_BUFFER_10S_Tampon,SIZE_BUFFER_1M_Tampon,SIZE_BUFFER_10M_Tampon,SIZE_BUFFER_1H_Tampon};
+  uint32_t limit_not_save[6] = {SIZE_BUFFER_50MS_limit,SIZE_BUFFER_1S_limit,SIZE_BUFFER_10S_limit,SIZE_BUFFER_1M_limit,SIZE_BUFFER_10M_limit,SIZE_BUFFER_1H_limit};
+  uint32_t size_buffer_readable[6] = {0,0,0,0,0};
+
   bool displayWifi = true;
   bool canShow = true;
   uint32_t timeDisplayDmmer = millis() + 600000;
-  bool encapsulation = false;
-  uint32_t encapsulation_a = 0;
-  uint32_t encapsulation_b = 0;
-  uint32_t encapsulation_size = 0;
-  uint32_t encapsulation_size_padding = 0;
-  uint32_t encapsulation_size_div3 = 0;
-  uint32_t encapsulation_size_nbytes = 0;
-  uint32_t encapsulation_crc = 0;
 
-  void updateTime(uint8_t stop, uint32_t new_time){
-    // uint32_t new_time =  millis(); // Rtc.millis();, rtc isn't define here, we will need to change the location of this function
-    for (uint8_t i = 0; i < stop; i ++){
-      time[i] = new_time;
+  bool readData = false;
+  
+  uint8_t pin_analog[5] = {2,3,4,5,8};
+  
+  uint8_t number50ms = 0;
+
+  typeAnalog typeAccept[12] = {typeAnalog("Relay", 224, 0), typeAnalog("Relay_i", 256, 0), typeAnalog("PWM", 416, 1), typeAnalog("PWM_i", 448, 1),
+  typeAnalog("ADC Joystick", 3328, 2), typeAnalog("ADC Input", 4704, 2), typeAnalog("ADC Temp", 4736, 2), typeAnalog("ADC Light", 4768, 2),  typeAnalog("ADC Button", 4800, 2),
+  typeAnalog("ADC Button_i", 4832, 2), typeAnalog("ADC Range", 4864, 2), typeAnalog("ADC CT Power", 4896, 2)};
+
+
+  int find_id_type(String name, int priority = -1){
+    for(auto el : typeAccept){
+      if(el.name.equals(name) && (priority == -1 || el.priority == priority)){
+        return el.id;
+      }
+    }
+    return -100;
+  }
+  String find_name_type(int id, int priority = -1){
+    for(auto el : typeAccept){
+      if(el.id < id && id < el.id+6 && (priority == -1 || el.priority == priority)){
+        return el.name;
+      }
+    }
+    return "";
+  }
+
+  void update_size_buffer_readable(uint8_t i){
+    if(size_buffer_readable[i] > size_buffer[i]){
+      size_buffer_readable[i] = size_buffer[i];
+    } else if(size_buffer_readable[i] < size_buffer[i]){
+      size_buffer_readable[i] += 1;
     }
   }
 
-  uint32_t getTime(timeBlinx info, uint8_t index, uint32_t offset){
-    return time[info.ind] + info.millis_second * ( index - offset ) ;
+  void updateTime(uint8_t stop, uint32_t new_time){
+    // uint32_t new_time =  millis(); // Rtc.millis();, rtc isn't define here, we will need to change the location of this function
+    if(stop <= 2){
+      for (uint8_t i = 0; i < stop; i ++){
+        updateTime_i(i, new_time);
+      }
+    } else{
+      for (uint8_t i = 2; i < stop; i ++){
+        updateTime_i(i, new_time);
+      }
+    }
+  }
+
+
+  void updateTime_i(uint8_t i, uint32_t new_time){
+        if (lastTime[i] == 0){
+          timeNotSave[i] = 0;
+          // nothing, it is the first time
+        } else if(new_time < lastTime[i]){
+          // restart
+          timeNotSave[i] = -1;
+          size_buffer_readable[i] = 0;
+          timeShow[i] = 0;
+        }else{
+          int diff = (new_time-lastTime[i]-3)/millis_second[i] - 1; // -3 is for the small error, if we update the time 1 millisecond in delay, it is not that problematics
+          if (diff <= 0){
+            timeNotSave[i] = 0;
+          } else if (diff >= limit_not_save[i] ){
+            // restart
+            timeNotSave[i] = -1;
+            size_buffer_readable[i] = 0;
+            timeShow[i] = 0;
+          } else{
+            timeNotSave[i] = diff;
+            size_buffer_readable[i] += diff;
+            timeShow[i] += diff * millis_second[i];
+          }
+        }
+        lastTime[i] = new_time;
+        if(timeShow[i] == 0){
+          timeShow[i] = new_time;
+        } else{
+          timeShow[i] += millis_second[i];
+        }
+        update_size_buffer_readable(i);
+  }
+
+  void beginReadData(uint32_t ind){
+    timeShowRead = timeShow[ind];
+    readData = true;
+  }
+
+  void endReadData(void){
+    timeShowRead = -1;
+    readData = false;
+  }
+
+  timeSeparateBlinx timeSeparate(uint32_t time){
+    uint32_t b = time/1000;     // seconds
+    uint32_t c = time - b*1000; // millis
+    return {b, c};
+  }
+
+  timeSeparateBlinx addTimeSeparate(uint32_t time){
+    timeSeparateBlinx t = timeSeparate(time + timeNTP.ms);
+    return {t.s + timeNTP.s, t.ms};
+  }
+
+  timeSeparateBlinx getTime(uint32_t ind, uint32_t index, uint32_t offset){
+    return addTimeSeparate(timeShowRead + millis_second[ind] * ( index - offset )) ;
   }
 
   char* get_int(int value) {
@@ -258,6 +295,203 @@ struct {
   }
   
 } infoConfigBlinx;
+
+using FunctionType = void (*)(int32_t, int);
+using FunctionClampType = int32_t (*)(int32_t);
+
+struct bufferTime {
+  int32_t* buffer = nullptr;
+
+  int32_t nanValue;
+  int32_t errorValue;
+  bool existNanValue;
+  bool existErrorValue;
+
+  uint32_t indexActual = 0;
+  uint32_t indexBegin = 0;
+  
+  uint32_t indexBeginRead = 0;
+  uint32_t indexEndRead = 0;
+  
+  uint32_t typeBuffer;
+  uint32_t diff;
+  uint32_t size;
+
+
+  bufferTime(uint32_t _typeBuffer, uint32_t _diff, int32_t _nanValue, bool _existNanValue, int32_t _errorValue, bool _existErrorValue) : diff(_diff), typeBuffer(_typeBuffer), nanValue(_nanValue), existNanValue(_existNanValue), errorValue(_errorValue), existErrorValue(_existErrorValue){
+    size = infoConfigBlinx.size_buffer[typeBuffer]+infoConfigBlinx.size_buffer_tampon[typeBuffer];
+    buffer = new int32_t[size];
+    for (int i = 0; i < size; i++){
+      buffer[i] = 0;
+    }
+  }
+  bufferTime() {
+    typeBuffer = 0;
+    diff = 0;
+    size = 0;
+  }
+
+  void updateIndex(){
+      indexActual++;
+      if (indexActual >= size) {
+          indexActual = 0;
+      }
+
+      if(infoConfigBlinx.size_buffer_readable[typeBuffer] >= infoConfigBlinx.size_buffer[typeBuffer]){
+        indexBegin ++;
+        if (indexBegin >= size) {
+            indexBegin = 0;
+        }
+      }
+
+      if(!infoConfigBlinx.readData){
+        indexEndRead = indexActual;
+        indexBeginRead = indexBegin;
+      }
+  }
+
+  uint32_t get_last_index(){
+      uint32_t lastIndex = indexActual-1;
+
+      if(indexActual == 0){
+        lastIndex = size-1;
+      }
+      return lastIndex;
+  }
+
+  void save(int32_t value){
+      int32_t useValue = value;
+      uint32_t lastIndex = get_last_index();
+
+      if (existErrorValue && useValue == errorValue){
+        useValue = buffer[lastIndex];
+      }
+
+      if (infoConfigBlinx.timeNotSave[typeBuffer] == -1){
+        indexActual = 0;
+        indexBegin = 0;
+        indexBeginRead = 0;
+        indexEndRead = 0;
+      } else if (infoConfigBlinx.timeNotSave[typeBuffer] > 0){
+        int32_t newVal = (buffer[lastIndex] + useValue)/2;
+        if (existNanValue && (buffer[lastIndex] == nanValue || useValue == nanValue)){
+          newVal = nanValue;
+        }
+        for (int i = 0; i<infoConfigBlinx.timeNotSave[typeBuffer]; i++){
+          buffer[indexActual] = newVal;
+          updateIndex();
+        }
+      }
+
+      buffer[indexActual] = useValue;
+      updateIndex();
+  }
+
+  void getData(uint32_t ind, FunctionType func, int argSupl = 0){
+      uint32_t max_ind = size;
+      uint32_t index_data = (indexBeginRead+ind)%max_ind;
+
+      (*func)(buffer[index_data], argSupl);
+  }
+};
+
+struct bufferSensor {
+  bufferTime* buffer;
+  uint32_t size;
+  FunctionClampType clamp; 
+
+  int32_t nanValue;
+  int32_t errorValue;
+  bool existNanValue;
+  bool existErrorValue;
+
+  bufferSensor(uint32_t _size, FunctionClampType _clamp, int32_t _nanValue, bool _existNanValue, int32_t _errorValue, bool _existErrorValue) : buffer(nullptr), size(_size), clamp(_clamp), nanValue(_nanValue), existNanValue(_existNanValue), errorValue(_errorValue), existErrorValue(_existErrorValue) {
+    buffer = new bufferTime[size];
+  }
+
+  bufferSensor(uint32_t _size, FunctionClampType _clamp) : buffer(nullptr), size(_size), clamp(_clamp) {
+    buffer = new bufferTime[size];
+    existNanValue = false;
+    existErrorValue = false;
+  }
+
+  void activate(uint32_t ind, uint32_t type, uint32_t diff){
+    buffer[ind] = bufferTime(type, diff, nanValue, existNanValue, errorValue, existErrorValue);
+  }
+
+  void save(uint32_t ind){
+      if (buffer[ind-1].buffer != nullptr) {
+        uint32_t sum = 0;
+        uint32_t index = buffer[ind-1].indexActual;
+        int32_t indexDiff = index - buffer[ind].diff;
+        uint32_t lenghtIndex = infoConfigBlinx.size_buffer_readable[buffer[ind-1].typeBuffer];
+        uint32_t buffer_value = 0;
+        if (lenghtIndex < buffer[ind].diff){
+          buffer_value = buffer[ind-1].buffer[0];
+          if (existNanValue && buffer_value == nanValue){
+            buffer_value = clamp(buffer_value);
+            if(buffer_value == nanValue){
+              buffer[ind].save(buffer_value);
+              return;
+            }
+          }
+          for (uint32_t y = 0; y < (buffer[ind].diff - lenghtIndex); y++) {
+            sum += buffer_value;
+          }
+          for (uint32_t y = 0; y < index; y++) {
+            buffer_value = buffer[ind-1].buffer[y];
+              if (existNanValue && buffer_value == nanValue){
+                buffer_value = clamp(buffer_value);
+                if(buffer_value == nanValue){
+                  buffer[ind].save(buffer_value);
+                  return;
+                }
+              }
+              sum += buffer_value;
+          }
+        } else {
+          if (indexDiff >= 0){
+            for (uint32_t y = indexDiff; y < index; y++) {
+              buffer_value = buffer[ind-1].buffer[y];
+              if (existNanValue && buffer_value == nanValue){
+                buffer_value = clamp(buffer_value);
+                if(buffer_value == nanValue){
+                  buffer[ind].save(buffer_value);
+                  return;
+                }
+              }
+              sum += buffer_value;
+            }
+          } else {
+            for (uint32_t y = 0; y < index; y++) {
+              buffer_value = buffer[ind-1].buffer[y];
+              if (existNanValue && buffer_value == nanValue){
+                buffer_value = clamp(buffer_value);
+                if(buffer_value == nanValue){
+                  buffer[ind].save(buffer_value);
+                  return;
+                }
+              }
+              sum += buffer_value;
+            }
+            for (uint32_t y = (buffer[ind-1].size + indexDiff); y < buffer[ind-1].size; y++) {
+              buffer_value = buffer[ind-1].buffer[y];
+              if (existNanValue && buffer_value == nanValue){
+                buffer_value = clamp(buffer_value);
+                if(buffer_value == nanValue){
+                  buffer[ind].save(buffer_value);
+                  return;
+                }
+              }
+              sum += buffer_value;
+            }
+          }
+        }
+
+        buffer[ind].save((int32_t)(sum / buffer[ind].diff));
+      }
+  }
+};
 #endif // BLINX
 
 
@@ -920,6 +1154,12 @@ void setup(void) {
 #endif
 
   TasmotaGlobal.rules_flag.system_init = 1;
+
+
+
+#ifdef BLINX
+  begin_time_50ms_blinx();
+#endif // BLINX
 }
 
 void BacklogLoop(void) {
@@ -1009,66 +1249,67 @@ void Scheduler(void) {
 
   #ifdef BLINX
 
-  static uint16_t whatTime = -1;
+  static int32_t whatTime = -1;
 
-  static uint32_t state_50msecond_before = 0;             // State 50msecond timer
-  static uint32_t state_second_before = 0;                // State second timer
+  //static uint32_t state_50msecond_before = 0;               // State 50msecond timer
+  static uint32_t state_second_before = 0;                  // State second timer
   static uint32_t state_10second_before = 0;                // State 10 second timer
-  static uint32_t state_1minute_before = 0;                // State minute timer
+  static uint32_t state_1minute_before = 0;                 // State minute timer
   static uint32_t state_10minute_before = 0;                // State 10 minute timer
-  static uint32_t state_1hour_before = 0;                // State hour timer
+  static uint32_t state_1hour_before = 0;                   // State hour timer
   
   if (TimeReached(state_1hour_before)) {
-    infoConfigBlinx.updateTime(6, RtcMillisBrut());//Rtc.millis);
+    infoConfigBlinx.updateTime(6, millis());//Rtc.millis);
 
-    SetNextTimeInterval(state_1hour_before, 3600000);
-    SetNextTimeInterval(state_10minute_before, 600000);
-    SetNextTimeInterval(state_1minute_before, 60000);
-    SetNextTimeInterval(state_10second_before, 10000);
+    SetNextTimeInterval(state_1hour_before, 60*60*1000);
+    SetNextTimeInterval(state_10minute_before, 60*10*1000);
+    SetNextTimeInterval(state_1minute_before, 60*1000);
+    SetNextTimeInterval(state_10second_before, 10*1000);
     SetNextTimeInterval(state_second_before, 1000);
-    SetNextTimeInterval(state_50msecond_before, 50);
-    XsnsCall(FUNC_PREP_DATA);
+    //SetNextTimeInterval(state_50msecond_before, 50);
+    //XsnsCall(FUNC_PREP_DATA);
     whatTime = FUNC_EVERY_HOUR;
   } else if (TimeReached(state_10minute_before)) {
-    infoConfigBlinx.updateTime(5, RtcMillisBrut());//Rtc.millis);
+    infoConfigBlinx.updateTime(5, millis());//Rtc.millis);
 
-    SetNextTimeInterval(state_1minute_before, 60000);
-    SetNextTimeInterval(state_10second_before, 10000);
+    SetNextTimeInterval(state_10minute_before, 60*10*1000);
+    SetNextTimeInterval(state_1minute_before, 60*1000);
+    SetNextTimeInterval(state_10second_before, 10*1000);
     SetNextTimeInterval(state_second_before, 1000);
-    SetNextTimeInterval(state_50msecond_before, 50);
-    XsnsCall(FUNC_PREP_DATA);
+    //SetNextTimeInterval(state_50msecond_before, 50);
+    //XsnsCall(FUNC_PREP_DATA);
     whatTime = FUNC_EVERY_10_MINUTE;
   } else if (TimeReached(state_1minute_before)) {
-    infoConfigBlinx.updateTime(4, RtcMillisBrut());//Rtc.millis);
+    infoConfigBlinx.updateTime(4, millis());//Rtc.millis);
 
-    SetNextTimeInterval(state_1minute_before, 60000);
-    SetNextTimeInterval(state_10second_before, 10000);
+    SetNextTimeInterval(state_1minute_before, 60*1000);
+    SetNextTimeInterval(state_10second_before, 10*1000);
     SetNextTimeInterval(state_second_before, 1000);
-    SetNextTimeInterval(state_50msecond_before, 50);
-    XsnsCall(FUNC_PREP_DATA);
+    //SetNextTimeInterval(state_50msecond_before, 50);
+    //XsnsCall(FUNC_PREP_DATA);
     whatTime = FUNC_EVERY_MINUTE;
   } else if (TimeReached(state_10second_before)) {
-    infoConfigBlinx.updateTime(3, RtcMillisBrut());//Rtc.millis);
+    infoConfigBlinx.updateTime(3, millis());//Rtc.millis);
 
-    SetNextTimeInterval(state_10second_before, 10000);
+    SetNextTimeInterval(state_10second_before, 10*1000);
     SetNextTimeInterval(state_second_before, 1000);
-    SetNextTimeInterval(state_50msecond_before, 50);
-    XsnsCall(FUNC_PREP_DATA);
+    //SetNextTimeInterval(state_50msecond_before, 50);
+    //XsnsCall(FUNC_PREP_DATA);
     whatTime = FUNC_EVERY_10_SECOND;
-  } else if (TimeReached(state_second_before)) {
+  } /*else if (TimeReached(state_second_before)) {
     infoConfigBlinx.updateTime(2, RtcMillisBrut());//Rtc.millis);
 
     SetNextTimeInterval(state_second_before, 1000);
-    SetNextTimeInterval(state_50msecond_before, 50);
-    XsnsCall(FUNC_PREP_DATA);
+    //SetNextTimeInterval(state_50msecond_before, 50);
+    //XsnsCall(FUNC_PREP_DATA);
     whatTime = FUNC_EVERY_SECOND;
-  } else if (TimeReached(state_50msecond_before)) {
+  }/* else if (TimeReached(state_50msecond_before)) {
     infoConfigBlinx.updateTime(1, RtcMillisBrut());//Rtc.millis);
 
     SetNextTimeInterval(state_50msecond_before, 50);
     XsnsCall(FUNC_PREP_DATA);
     whatTime = FUNC_EVERY_50_MSECOND;
-  }
+  }*/
 
   #endif // BLINX
 
@@ -1080,11 +1321,11 @@ void Scheduler(void) {
     RotaryHandler();
 #endif  // ROTARY_V1
 
-  #ifdef BLINX
-    XdrvCall(FUNC_EVERY_50_MSECOND);
-  #else
+  //#ifdef BLINX
+  //  XdrvCall(FUNC_EVERY_50_MSECOND);
+  //#else
     XdrvXsnsCall(FUNC_EVERY_50_MSECOND);
-  #endif // BLINX
+  //#endif // BLINX
   }
 
   static uint32_t state_100msecond = 0;            // State 100msecond timer
@@ -1116,6 +1357,7 @@ void Scheduler(void) {
 
 
   #ifdef BLINX
+  // get the data
     if (whatTime != -1){
       XsnsCall(whatTime);
       whatTime = -1;
@@ -1139,6 +1381,7 @@ void Scheduler(void) {
 }
 
 void loop(void) {
+  
   uint32_t my_sleep = millis();
 
   Scheduler();

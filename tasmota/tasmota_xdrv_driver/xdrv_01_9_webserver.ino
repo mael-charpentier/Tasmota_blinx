@@ -3226,7 +3226,10 @@ void HandleHttpCommand(void)
 using StringArray2 = std::array<String, 2>;
 
 
-String base64_decode_test(String in) { // function from : https://stackoverflow.com/questions/180947/base64-decode-snippet-in-c
+String base64_decode_test(String in) {
+    // function from : https://stackoverflow.com/questions/180947/base64-decode-snippet-in-c
+    // function to decode a string in base64
+    
     String out;
 
     std::vector<int> T(256,-1);
@@ -3256,10 +3259,13 @@ std::vector<StringArray2> decodeContentlinx(String content, int numberArg){
     int start = 0;
     bool stop = false;
     for (int i = 0; i < numberArg; i++) {
+      // get all the key and value of the args in the string encode in base64
       int separatorIndex = decodedContent.indexOf("&", start); // Find the position of '&'
       String key = "";
       String value = "";
       String temp = "";
+      
+      // get the arg
       if (separatorIndex == -1) {
         temp = decodedContent.substring(start);
         stop = true;
@@ -3267,6 +3273,8 @@ std::vector<StringArray2> decodeContentlinx(String content, int numberArg){
         temp = decodedContent.substring(start, separatorIndex);
         start = separatorIndex + 1; // Move start index to the next character after '&'
       }
+      
+      // get the key and value
       separatorIndex = temp.indexOf("=");
       if (separatorIndex == -1) {
         key = temp;
@@ -3276,6 +3284,7 @@ std::vector<StringArray2> decodeContentlinx(String content, int numberArg){
           value = temp.substring(separatorIndex+1);
         }
       }
+      
       StringArray2 t = {key, value};
       keyValuePairs.push_back(t);
 
@@ -3411,13 +3420,19 @@ void HandleHttpRequestBlinxGet(void)
 
   if(vector_sensor_ask.size() != 0){
 
-    for (uint32_t i = 0; i < size_buffer+1; i++){
-      if (i == 0){
-        blinx_send_data_sensor(false, PSTR("Time"));
-      } else{
-        blinx_send_data_sensor(false, PSTR("%d"), infoConfigBlinx.getTime(infoTime, i, size_buffer));
-      }
+    // do the first line : time + name sensor
+    blinx_send_data_sensor(false, PSTR("Time"));
 
+    for (String &name_sensor : vector_sensor_ask){
+      blinxFindSensor(name_sensor, name_sensor.length(), function, 0);
+    }
+    
+    blinx_send_data_sensor(false, PSTR("\n"));
+
+    for (uint32_t i = begin_readable; i < size_buffer_readable+1; i++){
+      // do the others lines : time + data sensor
+      timeSeparateBlinx t = infoConfigBlinx.getTime(infoInd, i, size_buffer_readable);
+      blinx_send_data_sensor(false, PSTR("%u%03u"), t.s,t.ms);
       for (String &name_sensor : vector_sensor_ask){
         blinxFindSensor(name_sensor, name_sensor.length(), function, i);
       }
@@ -3425,12 +3440,16 @@ void HandleHttpRequestBlinxGet(void)
     }
     
   } else{
-    for (uint32_t i = 0; i < size_buffer+1; i++){
-      if (i == 0){
-        blinx_send_data_sensor(false, PSTR("Time"));
-      } else{
-        blinx_send_data_sensor(false, PSTR("%d"), infoConfigBlinx.getTime(infoTime, i, size_buffer));
-      }
+
+    // do the first line : time + name sensor
+    blinx_send_data_sensor(false, PSTR("Time"));
+    blinxFindSensorAll(function);
+    blinx_send_data_sensor(false, PSTR("\n"));
+
+    for (uint32_t i = begin_readable; i < size_buffer_readable+1; i++){
+      // do the others lines : time + data sensor
+      timeSeparateBlinx t = infoConfigBlinx.getTime(infoInd, i, size_buffer_readable);
+      blinx_send_data_sensor(false, PSTR("%u%03u"), t.s, t.ms);
       blinxFindSensorAll(function, i);
       blinx_send_data_sensor(false, PSTR("\n"));
     }
@@ -3441,7 +3460,6 @@ void HandleHttpRequestBlinxGet(void)
 
   return;
 }
-
 
 
 void HandleHttpRequestBlinxConfigAnalog(void)
@@ -3492,7 +3510,6 @@ void HandleHttpRequestBlinxConfigAnalog(String port1AString, String port1BString
   SetModuleType();
   myio template_gp;
   TemplateGpios(&template_gp);
-
   
   if(port1AString == ""){
     port1AString = infoConfigBlinx.find_name_type(Settings->my_gp.io[2]);
@@ -3818,6 +3835,8 @@ void HandleHttpRequestBlinxName(void)
 }
 
 void blinx_send_data_sensor(boolean PD, const char* formatP...) { 
+  // function to send the data inside an encapsulation or not
+
   //PD = true, equivalent WSContentSend_PD
   //PD = false, equivalent WSContentSend_P--
   va_list arg;
@@ -3841,6 +3860,11 @@ void blinx_send_data_sensor(boolean PD, const char* formatP...) {
   va_end(arg);
 }
 
+void blinx_encapsulation_send_crc() {
+  // send the result of the crc32
+  _WSContentSendBufferChunk(infoConfigBlinx.get_int(infoConfigBlinx.encapsulation_crc), 4);
+  infoConfigBlinx.encapsulation_crc = 0;
+}
 
 void HandleHttpRequestBlinxApiGetPort(String idType, String element, int index){
   if (idType == "Relay" || idType == "Relay_i"){ // relay/led ...
