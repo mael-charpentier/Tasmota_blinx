@@ -91,6 +91,7 @@ void SSD1306InitDriver(void) {
 #endif
 
 #ifdef BLINX
+      // turn on the display
       SetDisplayDimmer(100);
       ApplyDisplayDimmer();
 #endif // BLINX
@@ -155,7 +156,7 @@ void Ssd1306PrintBlinx(bool updateFirstLine)
   // function to show information on the display
   
   if(infoConfigBlinx.canShow){ // can we show information ? for the display sleep
-    if(TimeReached(infoConfigBlinx.timeDisplayDmmer)){ // is it time to put the display to sleep ?
+    if(TimeReached(infoConfigBlinx.timeDisplayDimmer)){ // is it time to put the display to sleep ?
       infoConfigBlinx.canShow = false;
       DisplayClear();
       SetDisplayDimmer(0);

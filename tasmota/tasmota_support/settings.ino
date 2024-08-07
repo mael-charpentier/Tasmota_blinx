@@ -1312,6 +1312,7 @@ void SettingsDefaultSet2(void) {
   Settings->display_refresh = 2;
   Settings->display_rows = 
   #ifdef BLINX
+  // change the display size for blinx, to be able to show more thing
   4
   #else
   2

@@ -133,7 +133,8 @@ const uint8_t MAX_ADCS = 1;                 // Max number of ESP8266 ADC pins
 const uint8_t MAX_SWITCHES_TXT = 8;         // Max number of switches user text
 #endif  // ESP8266
 #ifdef ESP32
-  #if BLINX
+  #ifdef BLINX
+  // add one analog port (we will never have 6 of them, 4 at max, but it for the index)
   const uint8_t MAX_ADCS = 6;
   #elif CONFIG_IDF_TARGET_ESP32C2 || CONFIG_IDF_TARGET_ESP32C3
   const uint8_t MAX_ADCS = 5;               // Max number of ESP32-C3 ADC pins (ADC2 pins are unusable with Wifi enabled)
@@ -424,11 +425,19 @@ enum LightSubtypes { LST_NONE, LST_SINGLE, LST_COLDWARM, LST_RGB,   LST_RGBW, LS
 enum LightTypes    { LT_BASIC, LT_PWM1,    LT_PWM2,      LT_PWM3,   LT_PWM4,  LT_PWM5,  LT_PWM6, LT_PWM7,
                      LT_NU8,   LT_SERIAL1, LT_SERIAL2,   LT_RGB,    LT_RGBW,  LT_RGBWC, LT_NU14, LT_NU15 };  // Do not insert new fields
 
-enum XsnsFunctions { FUNC_SETTINGS_OVERRIDE, FUNC_SETUP_RING1, FUNC_SETUP_RING2, FUNC_PRE_INIT, FUNC_INIT, FUNC_ACTIVE, FUNC_DISPLAY_INFO,
-                     FUNC_LOOP, FUNC_SLEEP_LOOP, FUNC_EVERY_50_MSECOND_TIMER, FUNC_EVERY_1_SECOND_TIMER, FUNC_EVERY_50_MSECOND, FUNC_EVERY_100_MSECOND, FUNC_EVERY_200_MSECOND, FUNC_EVERY_250_MSECOND, FUNC_EVERY_SECOND, FUNC_EVERY_10_SECOND, FUNC_EVERY_MINUTE, FUNC_EVERY_10_MINUTE, FUNC_EVERY_HOUR,
+enum XsnsFunctions { FUNC_SETTINGS_OVERRIDE, FUNC_SETUP_RING1, FUNC_SETUP_RING2, FUNC_PRE_INIT, FUNC_INIT, FUNC_ACTIVE,
+                     FUNC_LOOP, FUNC_SLEEP_LOOP, FUNC_EVERY_50_MSECOND, FUNC_EVERY_100_MSECOND, FUNC_EVERY_200_MSECOND, FUNC_EVERY_250_MSECOND, FUNC_EVERY_SECOND,
                      FUNC_RESET_SETTINGS, FUNC_RESTORE_SETTINGS, FUNC_SAVE_SETTINGS, FUNC_SAVE_AT_MIDNIGHT, FUNC_SAVE_BEFORE_RESTART, FUNC_INTERRUPT_STOP, FUNC_INTERRUPT_START,
                      FUNC_AFTER_TELEPERIOD, FUNC_JSON_APPEND, FUNC_WEB_SENSOR, FUNC_WEB_COL_SENSOR,
-                     FUNC_PREP_DATA, FUNC_WEB_SENSOR_BLINX_50Ms, FUNC_WEB_SENSOR_BLINX_1s, FUNC_WEB_SENSOR_BLINX_10s, FUNC_WEB_SENSOR_BLINX_1m, FUNC_WEB_SENSOR_BLINX_10m, FUNC_WEB_SENSOR_BLINX_1h,
+                     // #ifdef BLINX
+                     // add some function for blinx, not in a ifdef else we have an issue
+                     // for the display :
+                     FUNC_DISPLAY_INFO,
+                     // to get the data :
+                     FUNC_PREP_DATA, FUNC_EVERY_50_MSECOND_TIMER, FUNC_EVERY_1_SECOND_TIMER, FUNC_EVERY_10_SECOND, FUNC_EVERY_MINUTE, FUNC_EVERY_10_MINUTE, FUNC_EVERY_HOUR,
+                     // to read the data
+                     FUNC_WEB_SENSOR_BLINX_50Ms, FUNC_WEB_SENSOR_BLINX_1s, FUNC_WEB_SENSOR_BLINX_10s, FUNC_WEB_SENSOR_BLINX_1m, FUNC_WEB_SENSOR_BLINX_10m, FUNC_WEB_SENSOR_BLINX_1h,
+                     // #endif // BLINX
                      FUNC_MQTT_SUBSCRIBE, FUNC_MQTT_INIT,
                      FUNC_SET_POWER, FUNC_SHOW_SENSOR, FUNC_ANY_KEY, FUNC_LED_LINK,
                      FUNC_ENERGY_EVERY_SECOND, FUNC_ENERGY_RESET,

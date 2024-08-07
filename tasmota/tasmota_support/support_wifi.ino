@@ -1442,11 +1442,14 @@ uint64_t WifiGetNtp(void) {
       uint32_t fraction = (((uint64_t)tmp_fraction) * 1000000000) >> 32;
 
       #ifdef BLINX
-        // because of overflow with printf of an uint64_t, we need to separate the time into 2 uint32_t
-        timeSeparateBlinx t = infoConfigBlinx.timeSeparate(millis());
+        // get the ntp time, to show with the csv
+        
         uint32_t fraction_ms = uint32_t(fraction/1000000);
         uint32_t diff1900_1970 = 2208988800;
         uint32_t time_ms, remove_s = 0;
+        
+        // because of overflow with printf of an uint64_t, we need to separate the time into 2 uint32_t
+        timeSeparateBlinx t = infoConfigBlinx.timeSeparate(millis());
         
         if (fraction_ms < t.ms){
           time_ms = 1000 - (t.ms - fraction_ms);

@@ -1,32 +1,34 @@
-Nous allons nous baser sur l'outil : [TasmoAdmin](https://github.com/TasmoAdmin/TasmoAdmin), dans le futur.
-
 # Important
 
-Pour tout ce qui se fait par port serial, suivez ces étapes :
+For anything that involves serial port communication, follow these steps:
 
-1. Assurez-vous d'utiliser un navigateur de type chromium, tel que Google Chrome.
-2. Cliquez sur le bouton "Connecter", ou un équivalent.
-3. Choisissez l'élément contenant blinx dans la fenêtre qui s'est ouverte, situé en haut à gauche.
+1. Make sure to use a Chromium-based browser, such as Google Chrome.
+2. Click the "Connect" button or its equivalent.
+3. Select the item containing Blinx from the window that opens, located in the top left.
 
-# Compiler le firmware
+# Compile the Firmware
 
-Nous allons utiliser l'outil : [tasmocompiler_blinx](https://github.com/mael-charpentier/blinxcompiler). Suiver les étapes du readme pour l'installer, pour l'instant ne l'installer pas à l'aide de docker.
+We will use the tool: [blinxcompiler](https://github.com/mael-charpentier/blinxcompiler). Follow the README steps to install it, but for now, do not install it using Docker.
 
-Ensuite, sélectionnez les paramètres nécessaires. En général, les paramètres par défaut devraient fonctionner. Voici les actions importantes que vous pouvez faire :
+Next, select the necessary settings. Generally, the default settings should work. Here are some important actions you can take:
 
-- la configuration du wifi
-  - Permet de donner les informations pour que le blinx puisse ce connecter au wifi
-- les paramètres :
-  - Vous pouvez aussi définir le nom du blinx
-  - Vous pouvez choisir les tailles pour les buffers des senseurs
-  - Ce qui se passe aux différentes pins du microcontrolleur
+- Wi-Fi Configuration
+  - Provides the information needed for Blinx to connect to Wi-Fi.
+- Settings of the blinx
+  - You can also set the name of the Blinx.
+  - You can choose sizes for sensor buffers.
 
-Une fois que vous avez choisi vos différentes options, vous pouvez cliquer sur "Compiler". Puis cliquer sur le boutton `FIRMWARE.FACTORY.BIN` pour télécharger le firmware. 
 
-# Installer le firmware
+Once you have selected your options, click "Compile." Then click the `FIRMWARE.FACTORY.BIN` button to download the firmware.
 
-Nous allons utiliser l'outil [tasmota install](https://tasmota.github.io/install/). Qui utilise le port serial.
+# Install the Firmware
 
-Vous devez d'abord uploader le firmware, puis cliquer sur `CONNECT` pour ce connecter au blinx par port serial.
+We will use the tool [tasmota install](https://tasmota.github.io/install/), which utilizes the serial port.
 
-Ensuite, cliquer sur `INSTALL TASMOTA (...)`, puis suivez les étapes.
+First, upload the firmware, then click `CONNECT` to connect to Blinx via the serial port.
+
+Next, click `INSTALL TASMOTA (...)`, and follow the steps.
+
+# Administer Blinx :
+
+To administer Blinx, we will use : [BlinxAdmin](https://github.com/mael-charpentier/BlinxAdmin).

@@ -253,6 +253,7 @@
 #define D_RSLT_COMMAND "COMMAND"
 
 #ifdef BLINX
+// what do we want to show on the display (in addition to what is allowed by tasmota)
 #define D_JSON_BLINX_ANALOG0 "A0"
 #define D_JSON_BLINX_ANALOG1 "A1A"
 #define D_JSON_BLINX_ANALOG2 "A2B"
