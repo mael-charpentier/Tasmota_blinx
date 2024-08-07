@@ -1,12 +1,11 @@
 
-# add buffer to sensor
+# Adding Buffer to Sensor
 
-Il y a 2 cas, on veut modifier un senseur déjà existants ou on veut ajouter un senseur de 0. Les senseurs qui nous intéresse sont les `xsns` ([`tasmota/tasmota_xsns_sensor`](./../tasmota/tasmota_xsns_sensor)).
+There are two cases: either we want to modify an existing sensor or we want to add a new sensor from scratch. The sensors we're interested in are the `xsns` ([`tasmota/tasmota_xsns_sensor`](./../tasmota/tasmota_xsns_sensor)).
 
-## senseur déjà existants
+## Existing Sensor
 
-Le senseur devrait déjà avoir une fonction à la fin de son fichier, nommée `Xsns00`, avec `00` l'id du senseur.
-Nous allons modifier cette function, pour rajouter des cas au switch :
+The sensor should already have a function at the end of its file, named `Xsns00`, with `00` as the sensor's ID. We will modify this function to add cases to the switch statement :
 ```cpp
   #ifdef BLINX
         case FUNC_EVERY_50_MSECOND:
@@ -32,11 +31,11 @@ Nous allons modifier cette function, pour rajouter des cas au switch :
           break;
   #endif  // BLINX
 ```
-On ne va rajouter le premier cas, seulement si on veut que le senseur soit lu toutes les 50ms.
+We will add the first case only if we want the sensor to be read every 50ms.
 
-La function `saveData` va être une fonction qu'on va créer pour lires les donnéees des senseurs et les sauvegarder.
+The `saveData` function will be one that we create to read sensor data and save it.
 
-Nous allons ensuite créer une autre function après celle-ci :
+Next, we will create another function after this:
 ```cpp
 #ifdef BLINX
 
@@ -73,24 +72,23 @@ int Xsns00(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint
 #endif  // BLINX
 ```
 
-Pour la nouvelle function `Xsns00`, qu'on vient de créer, vous aller faire :
+For the new function `Xsns00` that we just created, you will:
 
-- un copier-coller de la function `Xsns00`
-- on va changer :
-  - ce que retourne la fonction,
-  - ce que la fonction prend en paramètre,
-  - le switch
+- Copy and paste the `Xsns00` function.
+- Change :
+  - What the function returns,
+  - The parameters the function takes,
+  - The switch statement.
 
-La function `show` appeler dans le switch va être une fonction qu'on va créer plus tard, pour afficher les données du senseurs.
+The `show` function called in the switch will be a function that we will create later to display sensor data.
 
-L'argument `phantomType` est utilisé sur on lit différent type du même senseur, par exemple le senseur sht3xpeut lire de 3 senseurs différent : `sht3x`, `sht3c` et `sht4x`.
+The `phantomType` argument is used when reading different types from the same sensor; for example, the sensor sht3x can read from 3 different sensors: `sht3x`, `sht3c` and `sht4x`.
 
-L'argument `phantomData` est utilisé sur on lit différent données du même senseur, par exemple le senseur sht3x lit 2 données différentes : la température et l'humidité.
-Donc si `phantomData=0` on va montrer les 2 données, si `phantomData=1` on va montrer une donnée (par exemple la température) et si `phantomData=2` on va montrer l'autre donnée (par exemple 'humidité).
+The `phantomData` argument is used when reading different data from the same sensor; for example, the sht3x sensor reads 2 different types of data: temperature and humidity. So if `phantomData=0` we will show both data, if `phantomData=1` we will show one data (e.g., temperature) and if `phantomData=2` we will show the other data (e.g., humidity).
 
-Pour trouver la function detect, dont je parle plus tard, vous allez dans la fonction `Xsns00`. À l'intérieur vous devriez avoir `if (FUNC_INIT == function) { ... }` qui fait un appel de fonction. La fonction qu'il appel est la fonction detect.
+To find the detect function, which I mention later, go into the `Xsns00` function. Inside you should find `if (FUNC_INIT == function) { ... }` which makes a function call. The function it calls is the detect function.
 
-Revenons au début du fichier, just avant la function detect, on va ajouter :
+Returning to the beginning of the file, just before the detect function, we will add:
 ```cpp
 #ifdef BLINX
 
@@ -104,12 +102,11 @@ int32_t clampNameBlinx( int32_t v){
 
 #endif // BLINX
 ```
-Avec le nom que vous voulez, cela va être le buffer où on va stocker les données.
+With the name you want, this will be the buffer where we store the data.
 
-Les variables `nanValue` et `errorValue` vont stocké les codes d'erreur que le senseur va renvoyé si la valeur n'est plus dans le range du senseur (`nanValue`) ou qu'il y a eu une erreur / qu'il n'a pas pu lire les données (`errorValue`). Si le senseur ne renvoie pas de donnée vous n'avez pas besoin de les créer.
-Si blinx reçoit la valeur `errorValue`, il va directement la remplacer par la dernière valeur qu'il a eu. Pour `nanValue` cela va dépendre du senseur, c'est pour cela qu'on a la function `clampNameBlinx`, qui va servir à dire à blinx que faire avec la valeur : si on retourne `v` (la valeur donnée en entrée et donc `nanValue`) blinx va sauvegarde la `nanValue` (pour les moyennes, si une des valeurs est la `nanValue` alors la moyenne sera aussi une `nanValue`, le `nanValue` sera absorbant), sinon on peut renvoyé une autre valeur que blinx va utiliser à la place.
+The variables `nanValue` and `errorValue` will store the error codes that the sensor will return if the value is out of the sensor’s range (`nanValue`) or if there was an error / it couldn’t read the data (`errorValue`). If the sensor doesn’t return data, you don’t need to create them. If Blinx receives the value `errorValue`, it will directly replace it with the last value it had. For `nanValue`, it will depend on the sensor, which is why we have the clampNameBlinx function, which will tell Blinx what to do with the value: if we return v (the input value and thus `nanValue`), Blinx will save the `nanValue` (for averages, if one of the values is `nanValue`, then the average will also be `nanValue`, the `nanValue` will be absorbing); otherwise, we can return another value that Blinx will use instead.
 
-Si le senseur va récolter différentes données ou pour différent type de senseur, comme pour le sht3x, on va :
+If the sensor collects different data or is of a different type, as for the sht3x, we will:
 ```cpp
 #ifdef BLINX
 
@@ -117,9 +114,9 @@ bufferSensor* namebuffer[size1][size2] = {};
 
 #endif // BLINX
 ```
-Avec `size1` le nombre de différente donnée qu'on va prendre (pour le sht3x cela va être 2 : temperature et humidité) et `size2` le nombre de différent senseur (pour le shtx cela va être `SHT3X_ADDRESSES`).
+With `size1` as the number of different data we will collect (for the sht3x, this will be 2: temperature and humidity) and `size2` as the number of different sensors (for shtx, this will be `SHT3X_ADDRESSES`).
 
-Maintenant, à l'intérieur de la fonction detect, une fois qu'on a détecter un senseur on va mettre ce code :
+Now, inside the detect function, once we have detected a sensor, we will put this code:
 ```cpp
 #ifdef BLINX
 
@@ -127,10 +124,11 @@ namebuffer = initBufferSensor(6, true, true, clampNameBlinx, nanValue, errorValu
 
 #endif // BLINX
 ```
-Ce qui va initialiser le buffer, ici on a `6` car on veut les 50ms, si ce n'est pas le cas, on doit mettre `5`.
-Les 2 premiers boolean, serve à dire (dans l'ordre respectif) si le senseur à une `nanValue` et si le senseur à une `errorValue`. Par defaut, c'est booléan sont faux. Ensuite, on envoie la fonction de clamp, par defaut on va utiliser `clampFunctionBlinx` (une fonction qui renvoie directement la valeur du senseur, onc le `nanValue`). Pour finir, on envoie les 2 valeurs, par défaut elles sont mise sur 0.
+This will initialize the buffer, here we use `6` because we want the 50ms data, if not, we should use `5`.
 
-Après la function detect, nous allons créer différents functions :
+The first two booleans indicate (in respective order) if the sensor has a `nanValue` and if the sensor has an `errorValue`. By default, these booleans are `false`. Then we pass the clamp function; by default, we will use `clampFunctionBlinx` (a function that directly returns the sensor value, hence `nanValue`). Finally, we pass the two errors values; by default, they are set to `0`.
+
+After the detect function, we will create different functions:
 ```cpp
 #ifdef BLINX
 
@@ -163,27 +161,26 @@ void show(uint8_t ind, uint32_t index_csv) {
 
 #endif
 ```
-Cela va être les functions pour enregistrer les données et afficher les données, j'ai donné un exemple, mais vous devait vous inspirer du code pour créer ces fonctions. Normalement il y a déjà une fonction pour aller chercher les données et une autre pour afficher les données.
+These functions will be for saving and displaying data. I've provided an example, but you should use the code to create these functions. Normally, there is already a function to get data and another to display data.
 
-Il y a une fonction supplémentaire `sendFunction` qui est là pour dire comment on veut afficher les données, s'il y a des calculs à effectuer avant de les affichers c'est ici ...
+There is an additional function `sendFunction` which specifies how we want to display the data, if there are calculations to be made before displaying, it will be done here.
 
-Pour la fonction show, l'argument `index_csv` va spécifier l'index qu'on veut afficher, sachant que pour l'index 0 on veut le nom du senseur.
+For the show function, the `index_csv` argument specifies the index we want to display, knowing that for index 0 we want the sensor's name.
 
-## si le senseur n'existe pas
+## If the Sensor Does Not Exist
 
-La librairy du senseur doit être mis dans le dossier [`lib/libeps32`](./../lib/libeps32) ou [`lib/lib_i2c`](./../lib/lib_i2c).
-Et le fichier pour le senseur doit être mis dans le dossier [`tasmota/tasmota_xsns_sensor`](./../tasmota/tasmota_xsns_sensor).
+The sensor library must be placed in the [`lib/libeps32`](./../lib/libeps32) or [`lib/lib_i2c`](./../lib/lib_i2c) directory.
+And the sensor file must be placed in the [`tasmota/tasmota_xsns_sensor`](./../tasmota/tasmota_xsns_sensor) directory.
 
-Pour voir à quoi cela doit ressembler, je conseille d'aller voir le code pour le [sensor de température et humidité](./../tasmota/tasmota_xsns_sensor/xsns_14_sht3x.ino). Globalement, les informations qui devront être modifié : `USE_sensor`, `Xsns00`, `XI2C_id`, ainsi que comment lire les données et comment les affichers.
+To see what it should look like, I recommend looking at the code for the [temperature and humidity sensor](./../tasmota/tasmota_xsns_sensor/xsns_14_sht3x.ino). Generally, the information that needs to be modified includes: `USE_sensor`, `Xsns00`, `XI2C_id`, as well as how to read and display the data.
 
-De plus, il faudra changer le compilateur pour qu'il define le `USE_sensor`. Sinon, le senseur ne sera pas activé.
+Additionally, you will need to change the webcompiler to define `USE_sensor`. Otherwise, the sensor will not be activated.
 
-Pour d'informations sur certaines parties lier à blinx dans le fichier, voir la section au dessus.
+For more information on parts related to Blinx in the file, see the section above.
 
-## montre le senseur sur le display :
+# Show the Sensor on the Display
 
-Pour pouvoir montrer les valeurs du senseur sur le display, il faut créer un nouvelle function :
-
+To display the sensor values on the display, you need to create a new function:
 ```cpp
 #ifdef BLINX
 bool Xsns00Name(bool first, bool json){
@@ -205,10 +202,11 @@ bool Xsns00Name(bool first, bool json){
 }
 #endif // BLINX
 ```
+This function will send the sensor name (`nameSensor`) as a key in a JSON object, with the value being a JSON object that has as many elements as the sensor has data types. The elements will be: the type of data (e.g., `Temperature` or `Distance`) as the key and the current data as the value. For example, for the sht3c, it would be: `"SHTC3":{"Temperature":"25.8", "Humidity":"42.1"}`.
 
-Cette function va envoyé le nom du senseur (`nameSensor`) comme clé d'un json, et comme valeur un json qui aura autant d'élément que le senseur aura de donnée. Les éléments seront : le type de donnée (par exemple : `Temperature` ou `Distance`) comme clé et comme valeur la donnée actuel. On aura ainsi, pour le sht3c : `"SHTC3":{"Temperature":"25.8", "Humidity":"42.1"}`.
 
-## accès au senseur
+# Give blinx access the Sensor
 
-Pour que blinx puisse avoir accès au senseur, il faudra modifier le fichier `xsns_get_sensor_blinx.ino`. Pour cela, on va utiliser le fichier python `prefixreeSearch.py` situé dans `tools/blinx`. Vous devez rajouter votre senseur dans le dictionnaire de `prefix_dict`, puis executer le code. Ce qui va vous générer le code à mettre dans le fichier `xsns_get_sensor_blinx.ino`.
-Par défault, le code va supposer que vous avez fait le code pour afficher les données sur le display, si ce n'est pas le cas, il faudra mettre en commentaire une ligne de la function `blinxGetInfoSensorI2C`.
+For Blinx to access the sensor, you need to modify the `xsns_get_sensor_blinx.ino` file. To do this, use the Python file `prefixreeSearch.py` located in `tools/blinx`. You need to add your sensor to the `prefix_dict` dictionary, then execute the code. This will generate the code to be placed in the `xsns_get_sensor_blinx.ino` file.
+
+By default, the code will assume you have written code to display data on the display; if not, you will need to comment out a line in the `blinxGetInfoSensorI2C` function.

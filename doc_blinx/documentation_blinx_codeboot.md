@@ -1,3 +1,6 @@
+# ATTENTION
+this doc isn't valid, don't read.
+
 # Configuration de blinx
 
 Pour configurer blinx, suivez ces étapes :

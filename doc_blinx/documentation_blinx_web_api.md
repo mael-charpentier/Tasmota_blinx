@@ -1,25 +1,27 @@
-# API WEB BLINX
+# BLINX API WEB
 
-## endpoint
-Voici les différents endpoint de l'api : `http://host/bc`, `http://host/br`, `http://host/bd`, `http://host/bl`, `http://host/bp`, `http://host/bi`, `http://host/bn` et `http://host/... .csv`.
+## Endpoints
+Here are the various endpoints of the API : `http://host/bc`, `http://host/br`, `http://host/bd`, `http://host/bl`, `http://host/bp`, `http://host/bi`, `http://host/bn` and `http://host/... .csv`.
 
-L'`host` peut soit être l'adresse ip du blinx ou `BLINX000.local`, avec `000` l'id du blinx qui peut varier.
+the `host` can either be the IP address of the Blinx or `BLINX000.local`, where `000` is the Blinx ID, which can vary.
 
-Les arguments peuvent être donné soit en get soit en post. Il y a un argument qui est récurrent à tous les endpoint : `content`, qui pourra contenir tous les autres arguments encoder en base64, par exemple au lieu de donner `a=0` comme argument on va donner `content=YT0w`.
+Arguments can be provided via GET or POST requests. There is one argument common to all endpoints: `content`, which can contain all other arguments encoded in base64. For example, instead of providing `a=0` as an argument, you would provide `content=YT0w`.
 
 ### `bc`
 
-Ce endpoint permet de configurer les ports analogues du blinx.
+This endpoint allows you to configure the analog ports of the Blinx.
 
-Les arguments :
+Arguments :
 
-- `port1A` (optionnel),
-- `port1B` (optionnel),
-- `port2A` (optionnel),
-- `port2B` (optionnel)
+- `port1A` (optional),
+- `port1B` (optional),
+- `port2A` (optional),
+- `port2B` (optional)
 
-Il faut au moins qu'il y en ait un argument, sinon il ne se passe rien.
-Les arguments vous spécifier le port et la valeur des arguments le type de sensor (voir [documentation tasmota](https://tasmota.github.io/docs/Components-old/#gpio-conversion)) qui doivent être le nom et pas le gpio (sans le nombre à la fin). Les deux types les plus importants sont `PWM` et `Relay`.
+At least one argument is required; otherwise, no changes will be made.
+The arguments specify the port and the value of the arguments determines the type of sensor. Here is the list of type accepted by blinx :
+
+- TODO
 
 ```
 http://BLINX000.local/bc?port1A=PWM&port1B=Relay
@@ -27,12 +29,12 @@ http://BLINX000.local/bc?port1A=PWM&port1B=Relay
 
 ### `br`
 
-Ce endpoint permet de configurer les sensors de type on/off, par exemple les leds, les relays ...
+This endpoint allows you to configure on/off type sensors, such as LEDs, relays ...
 
-Les arguments :
+Arguments :
 
-- `device` va permettre de savoir quel sensor vous voulez modifer, à l'aide du port. On s'attend à avoir : `Port1A`, `Port1B`, `Port2A` ou `Port2B`.
-- `action` représente l'action que vous voulez éxecuter. On s'attend à avoir : `off`, `on`, `toggle` ou `blink`.
+- `device` specifies which sensor you want to modify, using the port. Expected values are: `Port1A`, `Port1B`, `Port2A` ou `Port2B`.
+- `action` represents the action you want to execute. Expected values are: `off`, `on`, `toggle` ou `blink`.
 
 ```
 http://BLINX000.local/br?device=Port1A&action=off
@@ -40,17 +42,17 @@ http://BLINX000.local/br?device=Port1A&action=off
 
 ### `bd`
 
-Ce endpoint permet de configurer le display.
+This endpoint allows you to configure the display.
 
-Les arguments :
+Arguments :
 
-- `DisplayMode` (optionnel), qui permet de gérer le mode du display, pour voir les différents modes voir [documentation tasmota](https://tasmota.github.io/docs/Displays/#displaymode). On a un mode supplémentaire, le mode 6, qui est propre à blinx. Ce mode permet d'afficher le hostname sur la première ligne avec le ssid (en alternance), puis les 3 autres lignes servent à afficher des senseurs. On s'attend d'avoir un int de 0 à 6, inclus.
-- `DisplayDimmer` (optionnel), qui permet de gérer l'intensité du display, on s'attend d'avoir un int de 0 à 100, inclus. Avec 0 pour éteindre le display.
-- `DisplaySize` (optionnel), qui permet de scale ce qui est affiché. Il doit s'agir d'un int compris entre 1 et 4, inclus.
-- `DisplayRotate` (optionnel), qui permet de rotate ce qui est affiché. Il doit s'agir d'un int compris entre 0 et 3, inclus. Avec 0 qui représente 0°, 1 pour 90°, 2 pour 180° et 3 pour 270°.
-- `DisplayText` (optionnel), qui permet de changer le texte qui est affiché. Pour pouvoir utiliser cet argument, il faut que le mode soit sur 0. Si vous voulez afficher des choses spéciaux voir [documentation de tasmota](https://tasmota.github.io/docs/Displays/#displaytext).
+- `DisplayMode` (optional), manages the display mode. For different modes, see [documentation tasmota](https://tasmota.github.io/docs/Displays/#displaymode). An additional mode, mode 6, is specific to Blinx and displays the hostname on the first line alternating with the SSID, and the remaining three lines show sensor data. Expected values are integers from 0 to 6, inclusive.
+- `DisplayDimmer` (optional), controls the display brightness. Expected values are integers from 0 to 100, inclusive, with 0 to turn off the display.
+- `DisplaySize` (optional), scales the display content. Expected values are integers from 1 to 4, inclusive.
+- `DisplayRotate` (optional), rotates the display content. Expected values are integers from 0 to 3, inclusive, where 0 represents 0°, 1 represents 90°, 2 represents 180°, and 3 represents 270°.
+- `DisplayText` (optional), changes the text displayed. This argument only works if the mode is set to 0. For special displays, refer to the [documentation de tasmota](https://tasmota.github.io/docs/Displays/#displaytext).
 
-Il faut au moins qu'il y en ait un argument, sinon il ne se passe rien.
+At least one argument is required; otherwise, no changes will be made.
 
 ```
 http://BLINX000.local/bd?DisplayMode=0&DisplayText=Hello, World
@@ -58,16 +60,16 @@ http://BLINX000.local/bd?DisplayMode=0&DisplayText=Hello, World
 
 ### `bp`
 
-Ce endpoint permet de configurer les sensors de type pwm.
+This endpoint allows you to configure PWM type sensors, such as some motor.
 
-Les arguments :
+Arguments :
 
-- `device`, qui permet d'identifier le senseur, qui doit faire partie de la liste : `buzzer`, `Port1A`, `Port1B`, `Port2A` ou `Port2B`.
-- `freq` (optionnel), qui permet de gérer la fréquence.
-- `value` (optionnel), qui permet de gérer la value.
-- `phase` (optionnel), qui permet de gérer la phase.
+- `device`, identifies the sensor and must be one of the following: `buzzer`, `Port1A`, `Port1B`, `Port2A` ou `Port2B`.
+- `freq` (optional), manages the frequency.
+- `value` (optional), manages the value.
+- `phase` (optional), manages the phase.
 
-Il faut au moins qu'il y en ait un argument optinnel, sinon il ne se passe rien.
+At least one optional argument is required; otherwise, no changes will be made.
 
 ```
 http://BLINX000.local/bp?device=buzzer&freq=100&value=50
@@ -75,76 +77,75 @@ http://BLINX000.local/bp?device=buzzer&freq=100&value=50
 
 ### `bi`
 
-Ce endpoint permet d'obtenir des informations à propos du blinx.
+This endpoint provides information about the Blinx.
 
-Les informations retournées sont : la listes des senseurs connectés, la liste des devices de type on/off, le hostname, l'adresse ip, la mac adresse et la version du blinx.
+Returned information includes: list of connected sensors (I2C and analog), hostname, IP address, MAC address, and Blinx version.
 
 Par exemple :
-```
+```json
 {"sensor":["SHTC3":{"Temperature":"25.8", "Humidity":"42.1"}],"analog":{"1A":{"name":"None"},"1B":{"name":"None"},"2A":{"name":"None"},"2B":{"name":"None"},"default":{"name":"None"}},"Hostname":"blinx133","IPAddress":"192.168.10.123","Mac":"DC:54:75:B4:..:..", "Version" : "13.4.0"}
 ```
 
 ### `bn`
 
-Ce endpoint permet de changer le hostname de blinx, utilisé pour le mdns.
+This endpoint allows you to change the hostname of Blinx used for mDNS.
 
-On doit fournir un argument : `name` qui va contenir le nouveau hostname.
-
+You must provide one argument: `name`, which will contain the new hostname.
 ```
 http://BLINX000.local/bn?name=BLINX000
 ```
 
 ### `.csv`
 
-Ce endpoint permet de obtenir les donnéees des senseurs sous forme de csv.
+This endpoint allows you to obtain sensor data in CSV format.
 
-Les arguments :
-- `delta` qui va spécifir quel temps on veut avoir, on attend `50ms`, `1s`, `10s`, `1m`, `10m` ou `1h`.
-- `n` pour spécifier combien de donnée on veut
+Arguments :
+- `delta` specifies the time interval. Expected values are `50ms`, `1s`, `10s`, `1m`, `10m` or `1h`.
+- `n` specifies how many data points you want.
 
-Pour sécifier les senseurs, on doit écrire les noms des senseurs avant le `.csv`, avec une virgule entre chaque nom.
-Si on ne spécifie pas de senseur, on va retourner tous les senseurs qui sont connectés.
+To specify sensors, write the sensor names before the `.csv , with each name separated by a comma. If no sensors are specified, all connected sensors will be returned.
 
 ```
-http://blinx000.local/sht3c_temp,sht3c_humi.csv?time=1s
-http://blinx000.local/.csv?time=1s
+http://blinx000.local/sht3c_temp,sht3c_humi.csv?delta=1s
+http://blinx000.local/.csv?delta=1s&n=20
 ```
 
-Voici la liste des noms des senseurs :
+Here is the list of sensor names:
 
 - counter
-- analog_1A (senseur analog)
-- analog_1B (senseur analog)
-- analog_2A (senseur analog)
-- analog_2B (senseur analog)
-- ds18x20_temp (senseur de temperature)
-- sht3x_temp (senseur de temperature)
-- sht3x_humi (senseur d'humidité)
-- sht3c_temp (senseur de temperature)
-- sht3c_humi (senseur d'humidité)
-- sht4x_temp (senseur de temperature)
-- sht4x_humi (senseur d'humidité)
-- vl53l0x (senseur de distance)
+- analog_1A (analog sensor)
+- analog_1B (analog sensor)
+- analog_2A (analog sensor)
+- analog_2B (analog sensor)
+- ds18x20_temp (temperature sensor)
+- sht3x_temp (temperature sensor)
+- sht3x_humi (humidity sensor)
+- sht3c_temp (temperature sensor)
+- sht3c_humi (humidity sensor)
+- sht4x_temp (temperature sensor)
+- sht4x_humi (humidity sensor)
+- vl53l0x (distance sensor)
 
 
-##  get argument
+##  GET Arguments
 
-On peut aussi faire des requêtes à l'api à l'aide d'argument get sur le root, en base 64 avec `content` : `http://host/??seqnum=...&content=...`. Pour l'utiliser, vous devez utiliser l'argument `?seqnum` avec n'mporte quel valeur, sinon cela ne va pas fonctioner.
+You can also make requests to the API using GET arguments on the root endpoint, in base64 with `content` : `http://host/??seqnum=...&content=...`. To use this, you must include the `?seqnum` argument with any value, otherwise, it will not work.
 
-Les différents arguments :
+Different arguments, possible to give to `content`:
 
-- `version`, vous donne la version du blinx
-- `restart`, permet de restart le blinx
-- `config`=`argument pour la config`. Les arguments attendu sont les mêmes que pour [endpoint `bc`](#bc).
-- `screen`=`argument pour changer le screen`. Les arguments attendu sont les mêmes que pour [endpoint `bd`](#bd).
-- `SENSOR`=`argument pour changer le senseur output SENSOR`, avec `SENSOR` dans `led`, `buzzer`, `Port1A`, `Port1B`, `Port2A` ou `Port2B`. Les arguments attendu sont les mêmes que pour [endpoint `bp`](#bp) (sans l'argument `device`) si le senseur est un pwm/motor/... Cependant, si le senseur est de type relay/led/..., on s'attends à avoir directment l'action.
+- `version`, gives you the version of Blinx
+- `restart`, allows you to restart Blinx
+- `config`=`arguments for configuration`. The expected arguments are the same as for [endpoint `bc`](#bc).
+- `screen`=`arguments to change the screen`. The expected arguments are the same as for [endpoint `bd`](#bd).
+- `SENSOR`=`arguments to change the sensor output SENSOR`, where `SENSOR` need to be etither `led`, `buzzer`, `Port1A`, `Port1B`, `Port2A` or `Port2B`. Expected arguments are the same as for [endpoint `bp`](#bp) (without the `device` argument) if the sensor is a PWM/motor/... However, if the sensor is of type relay/led/..., the action should be provided directly.
 
-La valeur des sous-arguments pour `config`, `screen` et `SENSOR`, doivent être sous la forme :
+The values of the sub-arguments for `config`, `screen` and `SENSOR` should be in the format :
 ```
 nomArg1=valArg1/nomArg2=valArg2
 ```
+Same as you would do for the GET argument, but replace `&` by `/`, and don't use the `?` at the begining.
 
-Par exemple (le text est en claire, mais normalement ce serait en base 64) :
+For example (text is in clear, but it should normally be in base64):
 ```
 http://host/??seqnum=0&content=version
 http://host/??seqnum=0&content=restart
