@@ -32,7 +32,6 @@ bufferSensor* initBufferSensor(int size, bool existNanValue = false, bool existE
 }
 
 
-
 idDeviceBlinx getIdDeviceSensorBlinx(int priority, int device, bool stop){
     int nmb_total_sensor = 0;
     if (priority != 0){
@@ -80,18 +79,19 @@ void blinxDisplayInfoSensor(void){
     String listName[5] = {"A1A", "A1B", "A2A", "A2B", "A0"};
     bool first = false;
     for (int i = 0; i<5; i++){
-        String nameSensor = infoConfigBlinx.find_name_type(Settings->my_gp.io[infoConfigBlinx.pin_analog[i]]);
-        if (nameSensor == ""){
-            nameSensor = "None";
-        }
+        String nameSensor = infoConfigBlinx.find_name_type(Settings->my_gp.io[infoConfigBlinx.pin_analog[i]], 2);
+        if (nameSensor != ""){
+            if(first){
+                ResponseAppend_P(PSTR(","));
+            }
+            first = true;
 
-        if(first){
-            ResponseAppend_P(PSTR(","));
-        }
-        first = true;
+            ResponseAppend_P(PSTR("\"%s\":{"), listName[i]);
 
-        ResponseAppend_P(PSTR("\"%s\":{\"%s\":\"value\"}"), listName[i],
-            nameSensor);
+            Xsns05SignleData(infoConfigBlinx.pin_analog[i]);
+            
+            ResponseAppend_P(PSTR("}"));
+        }
     }
     
     // info for i2c
