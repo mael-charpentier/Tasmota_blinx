@@ -36,17 +36,9 @@ On ne va rajouter le premier cas, seulement si on veut que le senseur soit lu to
 
 La function `saveData` va être une fonction qu'on va créer pour lires les donnéees des senseurs et les sauvegarder.
 
-Nous allons ensuite créer 3 functions après celle-ci :
+Nous allons ensuite créer une autre function après celle-ci :
 ```cpp
 #ifdef BLINX
-
-int Xsns00_size_data(uint32_t phantomType = 0, uint32_t phantomData = 0){
-  return ...;
-}
-
-int Xsns00_size_name(uint32_t phantomType = 0, uint32_t phantomData = 0){
-  return ...;
-}
 
 int Xsns00(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
   ...
@@ -81,10 +73,6 @@ int Xsns00(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint
 #endif  // BLINX
 ```
 
-La function `Xsns00_size_data` va retourner la taille que prend un data.
-
-La function `Xsns00_size_name` va retourner la taille que prend le nom du senseur.
-
 Pour la nouvelle function `Xsns00`, qu'on vient de créer, vous aller faire :
 
 - un copier-coller de la function `Xsns00`
@@ -107,10 +95,21 @@ Revenons au début du fichier, just avant la function detect, on va ajouter :
 #ifdef BLINX
 
 bufferSensor* namebuffer = nullptr;
+int32_t nanValue = ....; TODO
+int32_t errorValue = ....;
+
+int32_t clampNameBlinx( int32_t v){
+  return v;
+}
 
 #endif // BLINX
 ```
-Avec le nom que vous voulez, cela va être le buffer où on va stocker les données. Si le senseur va récolter différentes données ou pour différent type de senseur, comme pour le sht3x, on va :
+Avec le nom que vous voulez, cela va être le buffer où on va stocker les données.
+
+Les variables `nanValue` et `errorValue` vont stocké les codes d'erreur que le senseur va renvoyé si la valeur n'est plus dans le range du senseur (`nanValue`) ou qu'il y a eu une erreur / qu'il n'a pas pu lire les données (`errorValue`). Si le senseur ne renvoie pas de donnée vous n'avez pas besoin de les créer.
+Si blinx reçoit la valeur `errorValue`, il va directement la remplacer par la dernière valeur qu'il a eu. Pour `nanValue` cela va dépendre du senseur, c'est pour cela qu'on a la function `clampNameBlinx`, qui va servir à dire à blinx que faire avec la valeur : si on retourne `v` (la valeur donnée en entrée et donc `nanValue`) blinx va sauvegarde la `nanValue` (pour les moyennes, si une des valeurs est la `nanValue` alors la moyenne sera aussi une `nanValue`, le `nanValue` sera absorbant), sinon on peut renvoyé une autre valeur que blinx va utiliser à la place.
+
+Si le senseur va récolter différentes données ou pour différent type de senseur, comme pour le sht3x, on va :
 ```cpp
 #ifdef BLINX
 
@@ -124,11 +123,12 @@ Maintenant, à l'intérieur de la fonction detect, une fois qu'on a détecter un
 ```cpp
 #ifdef BLINX
 
-namebuffer = initBufferSensor(6);
+namebuffer = initBufferSensor(6, true, true, clampNameBlinx, nanValue, errorValue);
 
 #endif // BLINX
 ```
-Ce qui va initialiser le buffer, ici on a `6` car on veut les 50ms, si ce n'est pas le cas, on doit mettre `5`;
+Ce qui va initialiser le buffer, ici on a `6` car on veut les 50ms, si ce n'est pas le cas, on doit mettre `5`.
+Les 2 premiers boolean, serve à dire (dans l'ordre respectif) si le senseur à une `nanValue` et si le senseur à une `errorValue`. Par defaut, c'est booléan sont faux. Ensuite, on envoie la fonction de clamp, par defaut on va utiliser `clampFunctionBlinx` (une fonction qui renvoie directement la valeur du senseur, onc le `nanValue`). Pour finir, on envoie les 2 valeurs, par défaut elles sont mise sur 0.
 
 Après la function detect, nous allons créer différents functions :
 ```cpp
@@ -179,3 +179,36 @@ Pour voir à quoi cela doit ressembler, je conseille d'aller voir le code pour l
 De plus, il faudra changer le compilateur pour qu'il define le `USE_sensor`. Sinon, le senseur ne sera pas activé.
 
 Pour d'informations sur certaines parties lier à blinx dans le fichier, voir la section au dessus.
+
+## montre le senseur sur le display :
+
+Pour pouvoir montrer les valeurs du senseur sur le display, il faut créer un nouvelle function :
+
+```cpp
+#ifdef BLINX
+bool Xsns00Name(bool first, bool json){
+  if (first){
+    if (json){
+      ResponseAppend_P(PSTR(","));
+    } else {
+      blinx_send_data_sensor(false, PSTR(","));
+    }
+  }
+  int v = get_value();
+  first = true;
+  if (json){
+    ResponseAppend_P(PSTR("\"nameSensor\":{\"typeData\":\"%d\"}"), v);
+  } else{
+    blinx_send_data_sensor(false, PSTR("\"nameSensor\":{\"typeData\":\"%d\"}"), v);
+  }
+  return first;
+}
+#endif // BLINX
+```
+
+Cette function va envoyé le nom du senseur (`nameSensor`) comme clé d'un json, et comme valeur un json qui aura autant d'élément que le senseur aura de donnée. Les éléments seront : le type de donnée (par exemple : `Temperature` ou `Distance`) comme clé et comme valeur la donnée actuel. On aura ainsi, pour le sht3c : `"SHTC3":{"Temperature":"25.8", "Humidity":"42.1"}`.
+
+## accès au senseur
+
+Pour que blinx puisse avoir accès au senseur, il faudra modifier le fichier `xsns_get_sensor_blinx.ino`. Pour cela, on va utiliser le fichier python `prefixreeSearch.py` situé dans `tools/blinx`. Vous devez rajouter votre senseur dans le dictionnaire de `prefix_dict`, puis executer le code. Ce qui va vous générer le code à mettre dans le fichier `xsns_get_sensor_blinx.ino`.
+Par défault, le code va supposer que vous avez fait le code pour afficher les données sur le display, si ce n'est pas le cas, il faudra mettre en commentaire une ligne de la function `blinxGetInfoSensorI2C`.
