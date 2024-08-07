@@ -1227,6 +1227,78 @@ bool Xsns02(uint32_t function) {
 
 #ifdef BLINX
 
+void Xsns05SignleData(int pin){
+  int idx = getIndexFromPinADC_blinx(pin);
+    switch (Adc[idx].type) {
+      case ADC_INPUT: {
+        uint16_t analog = AdcRead(Adc[idx].pin, 5);
+        ResponseAppend_P(PSTR("\"input\":%d"), analog);
+        break;
+      }
+      case ADC_TEMP: {
+        ResponseAppend_P(PSTR("\"" D_JSON_TEMPERATURE "\":%4.1f"), Adc[idx].temperature);
+        break;
+      }
+      case ADC_LIGHT: {
+        uint16_t adc_light = AdcGetLux(idx);
+
+        ResponseAppend_P(PSTR("\"" D_JSON_ILLUMINANCE "\":%d"), adc_light);
+        break;
+      }
+      case ADC_RANGE: {
+        float adc_range = AdcGetRange(idx);
+        char range_chr[FLOATSZ];
+        dtostrfd(adc_range, Settings->flag2.frequency_resolution, range_chr);
+
+        ResponseAppend_P(PSTR("\"" D_JSON_RANGE "\":%s"), range_chr);
+        break;
+      }
+      case ADC_CT_POWER: {
+        AdcGetCurrentPower(idx, 5);
+
+        float voltage = (float)(Adc[idx].param3) / 10;
+        char voltage_chr[FLOATSZ];
+        dtostrfd(voltage, Settings->flag2.voltage_resolution, voltage_chr);
+        char current_chr[FLOATSZ];
+        dtostrfd(Adc[idx].current, Settings->flag2.current_resolution, current_chr);
+        char power_chr[FLOATSZ];
+        dtostrfd(voltage * Adc[idx].current, Settings->flag2.wattage_resolution, power_chr);
+        char energy_chr[FLOATSZ];
+        dtostrfd(Adc[idx].energy, Settings->flag2.energy_resolution, energy_chr);
+
+        ResponseAppend_P(PSTR("\"" D_JSON_ENERGY "\":%s,\"" D_JSON_POWERUSAGE "\":%s,\"" D_JSON_VOLTAGE "\":%s,\"" D_JSON_CURRENT "\":%s"),
+          energy_chr, power_chr, voltage_chr, current_chr);
+        break;
+      }
+      case ADC_JOY: {
+        uint16_t new_value = AdcRead(Adc[idx].pin, 1);
+        uint16_t value = new_value / Adc[idx].param1;
+        ResponseAppend_P(PSTR("\"Joy\":%d"), value);
+        break;
+      }
+      case ADC_PH: {
+        float ph = AdcGetPh(idx);
+        char ph_chr[FLOATSZ];
+        dtostrfd(ph, 2, ph_chr);
+
+        ResponseAppend_P(PSTR("\"pH\":%s"), ph_chr);
+        break;
+      }
+      case ADC_MQ: {
+        float mq = AdcGetMq(idx);
+        char mq_chr[FLOATSZ];
+        dtostrfd(mq, 2, mq_chr);
+
+        float mqnumber =Adc[idx].param1;
+        char mqnumber_chr[FLOATSZ];
+        dtostrfd(mqnumber, 0, mqnumber_chr);
+
+        ResponseAppend_P(PSTR("\"MQ%\":%s"), mq_chr);
+        break;
+      }
+    }
+}
+
 int Xsns02(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
   switch (function) {
     case FUNC_WEB_SENSOR_BLINX_1s:
