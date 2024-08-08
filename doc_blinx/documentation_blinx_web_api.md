@@ -96,7 +96,7 @@ Returned information includes: list of connected sensors (I2C and analog), hostn
 
 Par exemple :
 ```json
-{"sensor":["SHTC3":{"Temperature":"25.8", "Humidity":"42.1"}],"analog":{"1A":{"name":"None"},"1B":{"name":"None"},"2A":{"name":"None"},"2B":{"name":"None"},"default":{"name":"None"}},"Hostname":"blinx133","IPAddress":"192.168.10.123","Mac":"DC:54:75:B4:..:..", "Version" : "13.4.0"}
+{"sensorIC":{"SHTC3":{"Temperature":"25.8", "Humidity":"42.1"}},"analog":{"1A":{"name":"None"},"1B":{"name":"None"},"2A":{"name":"None"},"2B":{"name":"None"},"default":{"name":"None"}},"Hostname":"blinx133","IPAddress":"192.168.10.123","Mac":"DC:54:75:B4:..:..", "Version" : "13.4.0"}
 ```
 
 ### `bn`

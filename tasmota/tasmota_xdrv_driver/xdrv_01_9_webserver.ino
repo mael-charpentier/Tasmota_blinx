@@ -3745,9 +3745,9 @@ void HandleHttpRequestBlinxInfo(void)
     blinx_send_data_sensor(false, PSTR("{"));
     
     // for input sensor : analog + i2c
-    blinx_send_data_sensor(false, PSTR("\"sensor\":["));
+    blinx_send_data_sensor(false, PSTR("\"sensorI2C\":{"));
     blinxGetInfoSensorI2C(false, false);
-    blinx_send_data_sensor(false, PSTR("]"));
+    blinx_send_data_sensor(false, PSTR("}"));
     blinx_send_data_sensor(false, PSTR(",\"analog\":{"));
     blinxGetInfoSensorAnalog();
     blinx_send_data_sensor(false, PSTR("}"));
