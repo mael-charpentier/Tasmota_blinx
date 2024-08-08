@@ -65,8 +65,8 @@ void blinxGetInfoSensorAnalog(void){
         blinx_send_data_sensor(false, PSTR("\"name\":\"%s\""), nameSensor);
 
         if (infoConfigBlinx.find_name_type(Settings->my_gp.io[pin], 2) != ""){
-            blinx_send_data_sensor(false, PSTR(",\"access_name\":\"analog_%s\","), listName[i]);
-            Xsns05SignleData(pin);
+            blinx_send_data_sensor(false, PSTR(",\"access_name\":\"analog_%s\""), listName[i]);
+            Xsns05SignleData(pin, false);
         }
 
         blinx_send_data_sensor(false, PSTR("}"));
@@ -93,7 +93,7 @@ void blinxDisplayInfoSensor(void){
 
             ResponseAppend_P(PSTR("\"%s\":{"), listName[i]);
 
-            Xsns05SignleData(pin);
+            Xsns05SignleData(pin, true);
             
             ResponseAppend_P(PSTR("}"));
         }

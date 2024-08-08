@@ -774,7 +774,7 @@ String getTextFromIndexADC_blinx(int idx) {
 
 int getIndexFromPinADC_blinx(int pin) {
   for (uint32_t idx = 0; idx < Adcs.present; idx++) {
-    if (Adc[idx].pin == pin+1){
+    if (Adc[idx].pin == pin){
       return idx;
     }
   }
@@ -1213,22 +1213,37 @@ bool Xsns02(uint32_t function) {
 
 #ifdef BLINX
 
-void Xsns05SignleData(int pin){
+void Xsns05SignleData(int pin, bool json){
   int idx = getIndexFromPinADC_blinx(pin);
     switch (Adc[idx].type) {
       case ADC_INPUT: {
         uint16_t analog = AdcRead(Adc[idx].pin, 5);
-        ResponseAppend_P(PSTR("\"input\":%d"), analog);
+        if (json){
+          ResponseAppend_P(PSTR("\"input\":%d"), analog);
+        } else {
+          blinx_send_data_sensor(false, PSTR(","));
+          blinx_send_data_sensor(false, PSTR("\"input\":%d"), analog);
+        }
         break;
       }
       case ADC_TEMP: {
-        ResponseAppend_P(PSTR("\"" D_JSON_TEMPERATURE "\":%4.1f"), Adc[idx].temperature);
+        if (json){
+          ResponseAppend_P(PSTR("\"" D_JSON_TEMPERATURE "\":%4.1f"), Adc[idx].temperature);
+        } else{
+          blinx_send_data_sensor(false, PSTR(","));
+          blinx_send_data_sensor(false, PSTR("\"" D_JSON_TEMPERATURE "\":%4.1f"), Adc[idx].temperature);
+        }
         break;
       }
       case ADC_LIGHT: {
         uint16_t adc_light = AdcGetLux(idx);
 
-        ResponseAppend_P(PSTR("\"" D_JSON_ILLUMINANCE "\":%d"), adc_light);
+        if (json){
+          ResponseAppend_P(PSTR("\"" D_JSON_ILLUMINANCE "\":%d"), adc_light);
+        } else {
+          blinx_send_data_sensor(false, PSTR(","));
+          blinx_send_data_sensor(false, PSTR("\"" D_JSON_ILLUMINANCE "\":%d"), adc_light);
+        }
         break;
       }
       case ADC_RANGE: {
@@ -1236,7 +1251,12 @@ void Xsns05SignleData(int pin){
         char range_chr[FLOATSZ];
         dtostrfd(adc_range, Settings->flag2.frequency_resolution, range_chr);
 
-        ResponseAppend_P(PSTR("\"" D_JSON_RANGE "\":%s"), range_chr);
+        if (json){
+          ResponseAppend_P(PSTR("\"" D_JSON_RANGE "\":%s"), range_chr);
+        } else {
+          blinx_send_data_sensor(false, PSTR(","));
+          blinx_send_data_sensor(false, PSTR("\"" D_JSON_RANGE "\":%s"), range_chr);
+        }
         break;
       }
       case ADC_CT_POWER: {
@@ -1252,14 +1272,26 @@ void Xsns05SignleData(int pin){
         char energy_chr[FLOATSZ];
         dtostrfd(Adc[idx].energy, Settings->flag2.energy_resolution, energy_chr);
 
-        ResponseAppend_P(PSTR("\"" D_JSON_ENERGY "\":%s,\"" D_JSON_POWERUSAGE "\":%s,\"" D_JSON_VOLTAGE "\":%s,\"" D_JSON_CURRENT "\":%s"),
+        if (json){
+          ResponseAppend_P(PSTR("\"" D_JSON_ENERGY "\":%s,\"" D_JSON_POWERUSAGE "\":%s,\"" D_JSON_VOLTAGE "\":%s,\"" D_JSON_CURRENT "\":%s"),
           energy_chr, power_chr, voltage_chr, current_chr);
+        } else {
+          blinx_send_data_sensor(false, PSTR(","));
+          blinx_send_data_sensor(false, PSTR("\"" D_JSON_ENERGY "\":%s,\"" D_JSON_POWERUSAGE "\":%s,\"" D_JSON_VOLTAGE "\":%s,\"" D_JSON_CURRENT "\":%s"),
+          energy_chr, power_chr, voltage_chr, current_chr);
+        }
         break;
       }
       case ADC_JOY: {
         uint16_t new_value = AdcRead(Adc[idx].pin, 1);
         uint16_t value = new_value / Adc[idx].param1;
-        ResponseAppend_P(PSTR("\"Joy\":%d"), value);
+        
+        if (json){
+          ResponseAppend_P(PSTR("\"Joy\":%d"), value);
+        } else {
+          blinx_send_data_sensor(false, PSTR(","));
+          blinx_send_data_sensor(false, PSTR("\"Joy\":%d"), value);
+        }
         break;
       }
       case ADC_PH: {
@@ -1267,7 +1299,12 @@ void Xsns05SignleData(int pin){
         char ph_chr[FLOATSZ];
         dtostrfd(ph, 2, ph_chr);
 
-        ResponseAppend_P(PSTR("\"pH\":%s"), ph_chr);
+        if (json){
+          ResponseAppend_P(PSTR("\"pH\":%s"), ph_chr);
+        } else {
+          blinx_send_data_sensor(false, PSTR(","));
+          blinx_send_data_sensor(false, PSTR("\"pH\":%s"), ph_chr);
+        }
         break;
       }
       case ADC_MQ: {
@@ -1279,28 +1316,39 @@ void Xsns05SignleData(int pin){
         char mqnumber_chr[FLOATSZ];
         dtostrfd(mqnumber, 0, mqnumber_chr);
 
-        ResponseAppend_P(PSTR("\"MQ%\":%s"), mq_chr);
+        if (json){
+          ResponseAppend_P(PSTR("\"MQ\":%s"), mq_chr);
+        } else {
+          blinx_send_data_sensor(false, PSTR(","));
+          blinx_send_data_sensor(false, PSTR("\"MQ\":%s"), mq_chr);
+        }
         break;
       }
     }
 }
 
 int Xsns02(uint32_t function, uint32_t index_csv, uint32_t phantomType = 0, uint32_t phantomData = 0) {
+  if (phantomType == 0){
+    Xsns02(function, index_csv, 1, phantomData); // for analog to pin 2
+    Xsns02(function, index_csv, 2, phantomData); // for analog to pin 3
+    Xsns02(function, index_csv, 3, phantomData); // for analog to pin 4
+    Xsns02(function, index_csv, 4, phantomData); // for analog to pin 5
+  }
   switch (function) {
     case FUNC_WEB_SENSOR_BLINX_1s:
-      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType), 0, index_csv);
+      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType+1), 0, index_csv);
       break;
     case FUNC_WEB_SENSOR_BLINX_10s:
-      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType), 1, index_csv);
+      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType+1), 1, index_csv);
       break;
     case FUNC_WEB_SENSOR_BLINX_1m:
-      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType), 2, index_csv);
+      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType+1), 2, index_csv);
       break;
     case FUNC_WEB_SENSOR_BLINX_10m:
-      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType), 3, index_csv);
+      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType+1), 3, index_csv);
       break;
     case FUNC_WEB_SENSOR_BLINX_1h:
-      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType), 4, index_csv);
+      AdcShowBlinx(getIndexFromPinADC_blinx(phantomType+1), 4, index_csv);
       break;
   }
   return -1;
