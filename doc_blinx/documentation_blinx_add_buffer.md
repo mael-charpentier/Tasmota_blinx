@@ -93,7 +93,7 @@ Returning to the beginning of the file, just before the detect function, we will
 #ifdef BLINX
 
 bufferSensor* namebuffer = nullptr;
-int32_t nanValue = ....; TODO
+int32_t nanValue = ....;
 int32_t errorValue = ....;
 
 int32_t clampNameBlinx( int32_t v){

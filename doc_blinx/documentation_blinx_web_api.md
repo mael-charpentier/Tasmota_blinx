@@ -21,7 +21,20 @@ Arguments :
 At least one argument is required; otherwise, no changes will be made.
 The arguments specify the port and the value of the arguments determines the type of sensor. Here is the list of type accepted by blinx :
 
-- TODO
+- Relay
+- Relay_i
+- PWM
+- PWM_i
+- ADC Joystick
+- ADC Input
+- ADC Temp
+- ADC Light
+- ADC Button
+- ADC Button_i
+- ADC Range
+- ADC CT Power
+
+The `_i` is for inverse.
 
 ```
 http://BLINX000.local/bc?port1A=PWM&port1B=Relay
