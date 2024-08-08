@@ -887,6 +887,9 @@ struct TasmotaGlobal_t {
 #endif
 
   char version[16];                         // Composed version string like 255.255.255.255
+  #ifdef BLINX
+  char versionBlinx[16];                         // Composed version string like 255.255.255.255
+  #endif // BLINX
   char image_name[33];                      // Code image and/or commit
   char hostname[33];                        // Composed Wifi hostname
   char serial_in_buffer[INPUT_BUFFER_SIZE];  // Receive buffer
@@ -1185,6 +1188,12 @@ void setup(void) {
   if (TASMOTA_VERSION & 0xff) {  // Development or patched version 6.3.0.10
     snprintf_P(TasmotaGlobal.version, sizeof(TasmotaGlobal.version), PSTR("%s.%d"), TasmotaGlobal.version, TASMOTA_VERSION & 0xff);
   }
+  #ifdef BLINX
+  snprintf_P(TasmotaGlobal.versionBlinx, sizeof(TasmotaGlobal.version), PSTR("%d.%d.%d"), TASMOTA_BLINX_VERSION >> 24 & 0xff, TASMOTA_BLINX_VERSION >> 16 & 0xff, TASMOTA_BLINX_VERSION >> 8 & 0xff);  // Release version 6.3.0
+  if (TASMOTA_BLINX_VERSION & 0xff) {  // Development or patched version 6.3.0.10
+    snprintf_P(TasmotaGlobal.version, sizeof(TasmotaGlobal.version), PSTR("%s.%d"), TasmotaGlobal.version, TASMOTA_BLINX_VERSION & 0xff);
+  }
+  #endif // BLINX
 
   // Thehackbox inserts "release" or "commit number" before compiling using sed -i -e 's/PSTR("(%s)")/PSTR("(85cff52-%s)")/g' tasmota.ino
   snprintf_P(TasmotaGlobal.image_name, sizeof(TasmotaGlobal.image_name), PSTR("(%s)"), PSTR(CODE_IMAGE_STR));  // Results in (85cff52-tasmota) or (release-tasmota)

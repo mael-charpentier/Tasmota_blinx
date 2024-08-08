@@ -719,7 +719,7 @@ bool ParseIPv4(uint32_t* addr, const char* str_p)
   return (3 == i);
 }
 
-bool NewerVersion(char* version_str) {
+bool NewerVersion(char* version_str) { // TODO BLINX, also do it for TASMOTA_BLINX_VERSION
   // Function to parse & check if version_str is newer than our currently installed version.
   uint32_t version = 0;
   uint32_t i = 0;

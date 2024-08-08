@@ -22,4 +22,8 @@
 
 const uint32_t TASMOTA_VERSION = 0x0D040000;   // 13.4.0.0
 
+//#ifdef BLINX
+const uint32_t TASMOTA_BLINX_VERSION = 0x01000000;   // 1.0.0.0
+//#endif // BLINX
+
 #endif  // _TASMOTA_VERSION_H_

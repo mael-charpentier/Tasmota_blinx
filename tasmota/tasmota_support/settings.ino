@@ -941,6 +941,9 @@ void SettingsDefaultSet1(void) {
   Settings->cfg_size = sizeof(TSettings);
 //  Settings->save_flag = 0;
   Settings->version = TASMOTA_VERSION;
+  #ifdef BLINX
+  Settings->versionBlinx = TASMOTA_BLINX_VERSION;
+  #endif //BLINX
 //  Settings->bootcount = 0;
 //  Settings->cfg_crc = 0;
 }
@@ -1483,7 +1486,14 @@ void SettingsEnableAllI2cDrivers(void) {
 
 /********************************************************************************************/
 
-void SettingsDelta(void) {
+void SettingsDelta(void) { // TODO BLINX, also do it for TASMOTA_BLINX_VERSION
+
+  #ifdef BLINX
+  if (Settings->versionBlinx != TASMOTA_BLINX_VERSION) { 
+  Settings->versionBlinx = TASMOTA_BLINX_VERSION;
+  }
+  #endif //BLINX
+
   if (Settings->version != TASMOTA_VERSION) {  // Fix version dependent changes
 
 #ifdef ESP8266
