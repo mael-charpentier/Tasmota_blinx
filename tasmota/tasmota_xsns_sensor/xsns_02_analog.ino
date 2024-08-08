@@ -860,10 +860,6 @@ void AdcGetBlinx(uint32_t index) {
   }
 }
 
-
-// TODO
-// keep the index
-
 void sendFunction_analog_input(int32_t val, int idx){
   blinx_send_data_sensor(true, PSTR("%d"), val);
 }
@@ -931,16 +927,6 @@ void sendFunction_analog_power(int32_t analog, int idx){
   blinx_send_data_sensor(true, PSTR("%s"), voltage_chr);
   blinx_send_data_sensor(true, PSTR("%s"), current_chr);
   blinx_send_data_sensor(true, PSTR("%s"), power_chr);
-
-  // TODO : save energy in buffer
-  /*
-  float power = current * (float)(Adc[idx].param3) / 10;
-  uint32_t current_millis = millis();
-  Adc[idx].energy = Adc[idx].energy + ((power * (current_millis - Adc[idx].previous_millis)) / 3600000000);
-  char energy_chr[FLOATSZ];
-  dtostrfd(Adc[idx].energy, Settings->flag2.energy_resolution, energy_chr);
-  blinx_send_data_sensor(true, HTTP_SNS_ENERGY_TOTAL, energy_chr);
-  */
 }
 void sendFunction_analog_joy(int32_t val, int idx){
   int32_t value = val / Adc[idx].param1;
