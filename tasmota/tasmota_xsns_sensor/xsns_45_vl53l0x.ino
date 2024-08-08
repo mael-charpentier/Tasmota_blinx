@@ -66,11 +66,6 @@
 #define USE_VL_MEDIAN
 #define USE_VL_MEDIAN_SIZE 5   // Odd number of samples median detection
 
-
-#ifdef BLINX
-  #define VL53L0X_HIGH_SPEED
-#endif
-
 #include <algorithm>
 #include <Wire.h>
 #include "VL53L0X.h"
@@ -93,6 +88,13 @@ struct {
   uint8_t index;
   uint8_t ready = 0;
 } Vl53l0x_data[VL53LXX_MAX_SENSORS];
+
+#ifdef BLINX
+
+#define VL53L0X_HIGH_SPEED
+int32_t nanValueCorrection = 2200;
+
+#endif // BLINX
 
 bool VL53L0X_xshut = false;
 bool VL53L0X_detected = false;
@@ -171,7 +173,7 @@ void Vl53l0Detect(void) {
 #ifdef BLINX
 
 int32_t clampVl53l0xBlinx( int32_t v){
-  return 2200; //v;
+  return nanValueCorrection; //v;
 }
 
 void Vl53l0_global_50ms() {
@@ -179,11 +181,14 @@ void Vl53l0_global_50ms() {
     uint8_t i = VL53L0X_detected_index[y];
     uint16_t dist = VL53L0X_device[i].readRangeContinuousMillimetersWithoutLoop();
     if(dist == Vl53l0x_data[i].errorValue){
-      AddLog(LOG_LEVEL_INFO, PSTR("error value vl53l0x : [%d]"), dist);
-    } else if ((0 == dist) || (dist > 2200)) {
-      AddLog(LOG_LEVEL_INFO, PSTR("nan value vl53l0x : [%d]"), dist);
+      //AddLog(LOG_LEVEL_INFO, PSTR("error value vl53l0x : [%d]"), dist);
+    } else if (dist > nanValueCorrection) { // (0 == dist) ||
+      //AddLog(LOG_LEVEL_INFO, PSTR("nan value vl53l0x : [%d]"), dist);
       dist = Vl53l0x_data[i].nanValue;
+    } else {
+      //AddLog(LOG_LEVEL_INFO, PSTR("value vl53l0x : [%d]"), dist);
     }
+
     Vl53l0x_data[i].distance = dist;
     Vl53l0x_data[i].bufferBlinx->buffer[0].save(dist);
     if (!VL53L0X_xshut) { break; }
@@ -207,7 +212,7 @@ void Vl53l0_global(uint8_t index) {
 
 
 void sendFunction_Vl53l0(int32_t val, int _){
-    float distance = (val == 9999) ? NAN : (float)val / 10; // cm
+    float distance = (val == 9999) ? nanValueCorrection : (float)val / 10; // NAN or nanValueCorrection // cm
     blinx_send_data_sensor(true, PSTR("%4.1f"), distance);// cm"), distance);
 }
 
@@ -378,7 +383,7 @@ bool Xsns45Name(bool first, bool json){
           blinx_send_data_sensor(false, PSTR(","));
         }
       }
-      float distance = (Vl53l0x_data[i].distance == 9999) ? NAN : (float)Vl53l0x_data[i].distance / 10;  // cm
+      float distance = (Vl53l0x_data[i].distance >= 9999) ? NAN : (float)Vl53l0x_data[i].distance / 10;  // cm
       first = true;
       if (json){
         ResponseAppend_P(PSTR("\"VL53L0X_%d\":{\"" D_JSON_DISTANCE "\":\"%4.1f\"}"), i, distance);
