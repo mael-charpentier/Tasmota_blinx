@@ -3782,12 +3782,20 @@ void HandleHttpRequestBlinxName(void)
 
   if (newName != "") {
 
-    String cmnd = F(D_CMND_BACKLOG "0 ;" D_CMND_HOSTNAME " ");
-    cmnd += newName;
+    String cmd = F(D_CMND_BACKLOG "0 ;" D_CMND_HOSTNAME " ");
+    cmd += newName;
+    cmd += F(";" D_CMND_DEVICENAME " ");
+    cmd += newName;
+    cmd += F(";" D_CMND_FRIENDLYNAME "1 ");
+    cmd += newName;
+    cmd += F(";" D_CMND_FRIENDLYNAME "2 ");
+    cmd += newName;
+    cmd += F(";" D_CMND_FRIENDLYNAME "3 ");
+    cmd += newName;
 
     WSContentBegin(200, CT_HTML);
     WSContentEnd();
-    ExecuteWebCommand((char*)cmnd.c_str());
+    ExecuteWebCommand((char*)cmd.c_str());
   }
 }
 
