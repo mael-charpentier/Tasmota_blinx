@@ -3755,10 +3755,10 @@ void HandleHttpRequestBlinxInfo(void)
     // Info wifi
     blinx_send_data_sensor(false, PSTR(",\"" D_CMND_HOSTNAME "\":\"%s\",\""
                           D_CMND_IPADDRESS "\":\"%_I\",\""
-                          D_JSON_MAC "\":\"%s\", \"Version\" : \"%s\"}"),
+                          D_JSON_MAC "\":\"%s\", \"VersionBlinx\" : \"%s\", \"VersionTasmota\" : \"%s\"}"),
                           TasmotaGlobal.hostname,
                           (uint32_t)WiFi.localIP(),
-                          WiFi.macAddress().c_str(), TasmotaGlobal.version);
+                          WiFi.macAddress().c_str(), TasmotaGlobal.versionBlinx, TasmotaGlobal.version);
 
     WSContentEnd();
 

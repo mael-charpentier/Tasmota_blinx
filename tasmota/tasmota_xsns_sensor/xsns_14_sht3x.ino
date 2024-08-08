@@ -36,6 +36,9 @@
 
 enum SHT3X_Types { SHT3X_TYPE_SHT3X, SHT3X_TYPE_SHTCX, SHT3X_TYPE_SHT4X };
 const char kSht3xTypes[] PROGMEM = "SHT3X|SHTC3|SHT4X";
+#ifdef BLINX
+const char kSht3xTypesLower[] PROGMEM = "sht3x|sht3c|sht4x";
+#endif // BLINX
 
 uint8_t sht3x_addresses[] = { 0x44, 0x45, 0x70 };
 
@@ -45,6 +48,9 @@ struct SHT3XSTRUCT {
   uint8_t address;     // I2C bus address
   uint8_t bus;
   char types[6];  // Sensor type name and address, e.g. "SHT3X"
+#ifdef BLINX
+  char typesLower[6];  // Sensor type name and address, e.g. "sht3x"
+#endif // BLINX
 } sht3x_sensors[SHT3X_ADDRESSES];
 
 uint8_t Sht3xComputeCrc(uint8_t data[], uint8_t len) {
@@ -135,6 +141,9 @@ void Sht3xDetect(void) {
         sht3x_sensors[sht3x_count].bus = bus;
         if (Sht3xRead(sht3x_count, t, h)) {
           GetTextIndexed(sht3x_sensors[sht3x_count].types, sizeof(sht3x_sensors[sht3x_count].types), sht3x_sensors[sht3x_count].type, kSht3xTypes);
+          #ifdef BLINX
+          GetTextIndexed(sht3x_sensors[sht3x_count].typesLower, sizeof(sht3x_sensors[sht3x_count].typesLower), sht3x_sensors[sht3x_count].type, kSht3xTypesLower);
+          #endif // BLINX
           I2cSetActiveFound(sht3x_sensors[sht3x_count].address, sht3x_sensors[sht3x_count].types, sht3x_sensors[sht3x_count].bus);
 
           #ifdef BLINX
@@ -372,12 +381,13 @@ bool Xsns14(uint32_t function) {
 #ifdef BLINX
 bool Xsns14Name(bool first, bool json){
   float t, h;
-  char types_blinx_sht3x[11];
+  char types_blinx_sht3x[11], types_blinx_sht3x_lower[11];
   for (uint32_t i = 0; i < sht3x_count; i++) {
     if (Sht3xRead(i, t, h)) {
       t = ConvertTemp(t);
       h = ConvertHumidity(h);
       strlcpy(types_blinx_sht3x, sht3x_sensors[i].types, sizeof(types_blinx_sht3x));
+      strlcpy(types_blinx_sht3x_lower, sht3x_sensors[i].typesLower, sizeof(types_blinx_sht3x_lower));
 
       if (first){
         if (json){
@@ -387,10 +397,10 @@ bool Xsns14Name(bool first, bool json){
         }
       }
       first = true;
-      if (json){
+      if (json){ // for the display
         ResponseAppend_P(PSTR("\"%s\":{\"" D_JSON_TEMPERATURE "\":\"%4.1f\", \"" D_JSON_HUMIDITY "\":\"%4.1f\"}"), types_blinx_sht3x, t, h);
-      } else{
-        blinx_send_data_sensor(false, PSTR("\"%s\":{\"" D_JSON_TEMPERATURE "\":\"%4.1f\", \"" D_JSON_HUMIDITY "\":\"%4.1f\"}"), types_blinx_sht3x, t, h);
+      } else{ // for the endpoint : bi
+        blinx_send_data_sensor(false, PSTR("\"%s\":{\"" D_JSON_TEMPERATURE "\":{\"access_name\":\"%s_temp\",\"value\":\"%4.1f\"}, \"" D_JSON_HUMIDITY "\":{\"access_name\":\"%s_humi\",\"value\":\"%4.1f\"}}"), types_blinx_sht3x, types_blinx_sht3x_lower, t, types_blinx_sht3x_lower, h);
       }
     }
   }
