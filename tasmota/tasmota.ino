@@ -194,7 +194,10 @@ struct {
   
   // the pin for the analog port and the led/buzzer (8)
   uint8_t pin_analog[5] = {2,3,4,5,8};
+
   // the different senseur accepted for the analog
+  int32_t timeSleepTask = -1;
+
   typeAnalog typeAccept[12] = {typeAnalog("Relay", 224, 0), typeAnalog("Relay_i", 256, 0), typeAnalog("PWM", 416, 1), typeAnalog("PWM_i", 448, 1),
   typeAnalog("ADC Joystick", 3328, 2), typeAnalog("ADC Input", 4704, 2), typeAnalog("ADC Temp", 4736, 2), typeAnalog("ADC Light", 4768, 2),  typeAnalog("ADC Button", 4800, 2),
   typeAnalog("ADC Button_i", 4832, 2), typeAnalog("ADC Range", 4864, 2), typeAnalog("ADC CT Power", 4896, 2)};
