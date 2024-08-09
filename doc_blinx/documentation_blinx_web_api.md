@@ -16,10 +16,11 @@ Arguments :
 - `port1A` (optional),
 - `port1B` (optional),
 - `port2A` (optional),
-- `port2B` (optional)
+- `port2B` (optional),
+- `buzzer` or `led` (optional)
 
 At least one argument is required; otherwise, no changes will be made.
-The arguments specify the port and the value of the arguments determines the type of sensor. Here is the list of type accepted by blinx :
+The arguments specify the port (`port..`) and the value of the arguments determines the type of sensor. Here is the list of type accepted by blinx :
 
 - Relay
 - Relay_i
@@ -36,6 +37,9 @@ The arguments specify the port and the value of the arguments determines the typ
 
 The `_i` is for inverse.
 
+The argument `buzzer` or `led`, is to determine the type of the sensor on the blinx (close to the usb port) : is it a buzzer or a led.
+Note you still need to do `buzzer=` or  `led=`, so blinx can see it.
+
 ```
 http://BLINX000.local/bc?port1A=PWM&port1B=Relay
 ```
@@ -46,7 +50,7 @@ This endpoint allows you to configure on/off type sensors, such as LEDs, relays 
 
 Arguments :
 
-- `device` specifies which sensor you want to modify, using the port. Expected values are: `Port1A`, `Port1B`, `Port2A` ou `Port2B`.
+- `device` specifies which sensor you want to modify, using the port. Expected values are: `Port1A`, `Port1B`, `Port2A`, `Port2B` or `led`.
 - `action` represents the action you want to execute. Expected values are: `off`, `on`, `toggle` ou `blink`.
 
 ```
@@ -77,7 +81,7 @@ This endpoint allows you to configure PWM type sensors, such as some motor.
 
 Arguments :
 
-- `device`, identifies the sensor and must be one of the following: `buzzer`, `Port1A`, `Port1B`, `Port2A` ou `Port2B`.
+- `device`, identifies the sensor and must be one of the following: `buzzer`, `Port1A`, `Port1B`, `Port2A`, `Port2B` or `buzzer`.
 - `freq` (optional), manages the frequency.
 - `value` (optional), manages the value.
 - `phase` (optional), manages the phase.
