@@ -16,12 +16,29 @@ Arguments :
 - `port1A` (optional),
 - `port1B` (optional),
 - `port2A` (optional),
-- `port2B` (optional)
+- `port2B` (optional),
+- `buzzer` or `led` (optional)
 
 At least one argument is required; otherwise, no changes will be made.
-The arguments specify the port and the value of the arguments determines the type of sensor. Here is the list of type accepted by blinx :
+The arguments specify the port (`port..`) and the value of the arguments determines the type of sensor. Here is the list of type accepted by blinx :
 
-- TODO
+- Relay
+- Relay_i
+- PWM
+- PWM_i
+- ADC Joystick
+- ADC Input
+- ADC Temp
+- ADC Light
+- ADC Button
+- ADC Button_i
+- ADC Range
+- ADC CT Power
+
+The `_i` is for inverse.
+
+The argument `buzzer` or `led`, is to determine the type of the sensor on the blinx (close to the usb port) : is it a buzzer or a led.
+Note you still need to do `buzzer=` or  `led=`, so blinx can see it.
 
 ```
 http://BLINX000.local/bc?port1A=PWM&port1B=Relay
@@ -33,7 +50,7 @@ This endpoint allows you to configure on/off type sensors, such as LEDs, relays 
 
 Arguments :
 
-- `device` specifies which sensor you want to modify, using the port. Expected values are: `Port1A`, `Port1B`, `Port2A` ou `Port2B`.
+- `device` specifies which sensor you want to modify, using the port. Expected values are: `Port1A`, `Port1B`, `Port2A`, `Port2B` or `led`.
 - `action` represents the action you want to execute. Expected values are: `off`, `on`, `toggle` ou `blink`.
 
 ```
@@ -64,7 +81,7 @@ This endpoint allows you to configure PWM type sensors, such as some motor.
 
 Arguments :
 
-- `device`, identifies the sensor and must be one of the following: `buzzer`, `Port1A`, `Port1B`, `Port2A` ou `Port2B`.
+- `device`, identifies the sensor and must be one of the following: `buzzer`, `Port1A`, `Port1B`, `Port2A`, `Port2B` or `buzzer`.
 - `freq` (optional), manages the frequency.
 - `value` (optional), manages the value.
 - `phase` (optional), manages the phase.
@@ -83,7 +100,7 @@ Returned information includes: list of connected sensors (I2C and analog), hostn
 
 Par exemple :
 ```json
-{"sensor":["SHTC3":{"Temperature":"25.8", "Humidity":"42.1"}],"analog":{"1A":{"name":"None"},"1B":{"name":"None"},"2A":{"name":"None"},"2B":{"name":"None"},"default":{"name":"None"}},"Hostname":"blinx133","IPAddress":"192.168.10.123","Mac":"DC:54:75:B4:..:..", "Version" : "13.4.0"}
+{"sensorI2C":{"SHTC3":{"Temperature":{"access_name":"sht3c_temp","value":"28.1"}, "Humidity":{"access_name":"sht3c_humi","value":"41.4"}}},"analog":{"1A":{"name":"None"},"1B":{"name":"None"},"2A":{"name":"None"},"2B":{"name":"None"},"default":{"name":"None"}},"Hostname":"blinx133","IPAddress":"192.168.10.123","Mac":"DC:54:75:B4:..:..", "VersionBlinx" : "1.0.0", "VersionTasmota" : "13.4.0"}
 ```
 
 ### `bn`

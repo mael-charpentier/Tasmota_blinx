@@ -385,10 +385,10 @@ bool Xsns45Name(bool first, bool json){
       }
       float distance = (Vl53l0x_data[i].distance >= 9999) ? NAN : (float)Vl53l0x_data[i].distance / 10;  // cm
       first = true;
-      if (json){
+      if (json){ // for the display
         ResponseAppend_P(PSTR("\"VL53L0X_%d\":{\"" D_JSON_DISTANCE "\":\"%4.1f\"}"), i, distance);
-      } else{
-        blinx_send_data_sensor(false, PSTR("\"VL53L0X_%d\":{\"" D_JSON_DISTANCE "\":\"%4.1f\"}"), i, distance);
+      } else{ // for the endpoint : bi
+        blinx_send_data_sensor(false, PSTR("\"VL53L0X_%d\":{\"" D_JSON_DISTANCE "\":{\"access_name\":\"vl53l0x\",\"value\":\"%4.1f\"}}"), i, distance);
       }
     }
   }

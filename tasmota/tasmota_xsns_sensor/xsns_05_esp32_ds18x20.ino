@@ -656,7 +656,7 @@ bool Xsns05Name(bool first, bool json){
         }
       }
       first = true;
-      if (json){
+      if (json){ // for the display
         ResponseAppend_P(PSTR("\"%s\":{\"" D_JSON_TEMPERATURE "\":\"%4.1f\"}"), DS18X20Data.name,
           getTemp_Ds18x20(
             ds18x20_sensor[index].bufferBlinx->buffer[0].buffer[
@@ -665,8 +665,8 @@ bool Xsns05Name(bool first, bool json){
             index
           )
         );
-      } else{
-        blinx_send_data_sensor(false, PSTR("\"%s\":{\"" D_JSON_TEMPERATURE "\":\"%4.1f\"}"), DS18X20Data.name,
+      } else{ // for the endpoint : bi
+        blinx_send_data_sensor(false, PSTR("\"%s\":{\"" D_JSON_TEMPERATURE "\":{\"access_name\":\"ds18x20_temp\",\"value\":\"%4.1f\"}}"), DS18X20Data.name,
           getTemp_Ds18x20(
             ds18x20_sensor[index].bufferBlinx->buffer[0].buffer[
               ds18x20_sensor[index].bufferBlinx->buffer[0].get_last_index()

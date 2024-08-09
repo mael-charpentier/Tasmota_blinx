@@ -194,7 +194,10 @@ struct {
   
   // the pin for the analog port and the led/buzzer (8)
   uint8_t pin_analog[5] = {2,3,4,5,8};
+
   // the different senseur accepted for the analog
+  int32_t timeSleepTask = -1;
+
   typeAnalog typeAccept[12] = {typeAnalog("Relay", 224, 0), typeAnalog("Relay_i", 256, 0), typeAnalog("PWM", 416, 1), typeAnalog("PWM_i", 448, 1),
   typeAnalog("ADC Joystick", 3328, 2), typeAnalog("ADC Input", 4704, 2), typeAnalog("ADC Temp", 4736, 2), typeAnalog("ADC Light", 4768, 2),  typeAnalog("ADC Button", 4800, 2),
   typeAnalog("ADC Button_i", 4832, 2), typeAnalog("ADC Range", 4864, 2), typeAnalog("ADC CT Power", 4896, 2)};
@@ -887,6 +890,9 @@ struct TasmotaGlobal_t {
 #endif
 
   char version[16];                         // Composed version string like 255.255.255.255
+  #ifdef BLINX
+  char versionBlinx[16];                         // Composed version string like 255.255.255.255
+  #endif // BLINX
   char image_name[33];                      // Code image and/or commit
   char hostname[33];                        // Composed Wifi hostname
   char serial_in_buffer[INPUT_BUFFER_SIZE];  // Receive buffer
@@ -1185,6 +1191,12 @@ void setup(void) {
   if (TASMOTA_VERSION & 0xff) {  // Development or patched version 6.3.0.10
     snprintf_P(TasmotaGlobal.version, sizeof(TasmotaGlobal.version), PSTR("%s.%d"), TasmotaGlobal.version, TASMOTA_VERSION & 0xff);
   }
+  #ifdef BLINX
+  snprintf_P(TasmotaGlobal.versionBlinx, sizeof(TasmotaGlobal.version), PSTR("%d.%d.%d"), TASMOTA_BLINX_VERSION >> 24 & 0xff, TASMOTA_BLINX_VERSION >> 16 & 0xff, TASMOTA_BLINX_VERSION >> 8 & 0xff);  // Release version 6.3.0
+  if (TASMOTA_BLINX_VERSION & 0xff) {  // Development or patched version 6.3.0.10
+    snprintf_P(TasmotaGlobal.version, sizeof(TasmotaGlobal.version), PSTR("%s.%d"), TasmotaGlobal.version, TASMOTA_BLINX_VERSION & 0xff);
+  }
+  #endif // BLINX
 
   // Thehackbox inserts "release" or "commit number" before compiling using sed -i -e 's/PSTR("(%s)")/PSTR("(85cff52-%s)")/g' tasmota.ino
   snprintf_P(TasmotaGlobal.image_name, sizeof(TasmotaGlobal.image_name), PSTR("(%s)"), PSTR(CODE_IMAGE_STR));  // Results in (85cff52-tasmota) or (release-tasmota)

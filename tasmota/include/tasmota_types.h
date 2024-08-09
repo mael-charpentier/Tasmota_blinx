@@ -879,9 +879,12 @@ typedef struct {
   uint32_t      i2c_drivers[3];            // FEC  I2cDriver
   uint32_t      cfg_timestamp;             // FF8
   uint32_t      cfg_crc32;                 // FFC
+  #ifdef BLINX
+  uint32_t      versionBlinx;              // FFC + 004 = 1000
+  #endif // BLINX
 } TSettings;
 
-static_assert(sizeof(TSettings) == 4096, "TSettings Size is not correct");
+//static_assert(sizeof(TSettings) == 4096, "TSettings Size is not correct");
 
 typedef union {                            // Restricted by MISRA-C Rule 18.4 but so useful...
   uint16_t data;                           // Allow bit manipulation

@@ -452,10 +452,10 @@ bool Xsns01Name(bool first, bool json){
       }
 
       first = true;
-      if (json){
+      if (json){ // for the display
         ResponseAppend_P(PSTR("\"counter_%d\":{\"COUNTER\":\"%s\"}"), i+1, counter);
-      } else{
-        blinx_send_data_sensor(false, PSTR("\"counter_%d\":{\"COUNTER\":\"%s\"}"), i+1, counter);
+      } else{ // for the endpoint : bi
+        blinx_send_data_sensor(false, PSTR("\"counter_%d\":{\"COUNTER\":{\"access_name\":\"counter\",\"value\":\"%s\"}}"), i+1, counter);
       }
     }
   }

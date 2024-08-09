@@ -56,14 +56,18 @@ idDeviceBlinx getIdDeviceSensorBlinx(int priority, int device, bool stop){
 void blinxGetInfoSensorAnalog(void){
     String listName[5] = {"1A", "1B", "2A", "2B", "default"};
     for (int i = 0; i<5; i++){
-        String nameSensor = infoConfigBlinx.find_name_type(Settings->my_gp.io[infoConfigBlinx.pin_analog[i]]);
+        int pin = infoConfigBlinx.pin_analog[i];
+        String nameSensor = infoConfigBlinx.find_name_type(Settings->my_gp.io[pin]);
         if (nameSensor == ""){
             nameSensor = "None";
         }
-        blinx_send_data_sensor(false, PSTR("\"%s\":{\"name\":\"%s\""), listName[i],
-            nameSensor);
+        blinx_send_data_sensor(false, PSTR("\"%s\":{"), listName[i]);
+        blinx_send_data_sensor(false, PSTR("\"name\":\"%s\""), nameSensor);
 
-        // if we want to add other info to send
+        if (infoConfigBlinx.find_name_type(Settings->my_gp.io[pin], 2) != ""){
+            blinx_send_data_sensor(false, PSTR(",\"access_name\":\"analog_%s\""), listName[i]);
+            Xsns05SignleData(pin, false);
+        }
 
         blinx_send_data_sensor(false, PSTR("}"));
 
@@ -79,7 +83,8 @@ void blinxDisplayInfoSensor(void){
     String listName[5] = {"A1A", "A1B", "A2A", "A2B", "A0"};
     bool first = false;
     for (int i = 0; i<5; i++){
-        String nameSensor = infoConfigBlinx.find_name_type(Settings->my_gp.io[infoConfigBlinx.pin_analog[i]], 2);
+        int pin = infoConfigBlinx.pin_analog[i];
+        String nameSensor = infoConfigBlinx.find_name_type(Settings->my_gp.io[pin], 2);
         if (nameSensor != ""){
             if(first){
                 ResponseAppend_P(PSTR(","));
@@ -88,7 +93,7 @@ void blinxDisplayInfoSensor(void){
 
             ResponseAppend_P(PSTR("\"%s\":{"), listName[i]);
 
-            Xsns05SignleData(infoConfigBlinx.pin_analog[i]);
+            Xsns05SignleData(pin, true);
             
             ResponseAppend_P(PSTR("}"));
         }
@@ -97,6 +102,5 @@ void blinxDisplayInfoSensor(void){
     // info for i2c
     blinxGetInfoSensorI2C(first, true);
 }
-
 
 #endif // BLINX
