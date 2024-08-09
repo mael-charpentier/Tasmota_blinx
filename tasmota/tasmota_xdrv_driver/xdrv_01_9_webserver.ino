@@ -3256,11 +3256,20 @@ String base64_decode_test(String in) {
     return out;
 }
 
+void showStringByCharactereBlinx(String in){
+  for (unsigned char c : in) {
+    Serial.printf("%c", c);
+  }
+}
 
-std::vector<StringArray2> decodeContentBlinx(String content, int numberArg, String separator = "&"){
+
+std::vector<StringArray2> decodeContentBlinx(String content, int numberArg, String separator = "&", bool base64 = true){
     // function to get the arguments hidden in content, in base 64
 
-    String decodedContent = base64_decode_test(content); // Decode base64
+    String decodedContent = content;
+    if (base64){
+      decodedContent = base64_decode_test(content); // Decode base64
+    }
 
     // Splitting the decoded content into key-value pairs
     std::vector<StringArray2> keyValuePairs;
@@ -3316,7 +3325,7 @@ void HandleHttpRequestBlinxGet(void)
   String max_number = Webserver->arg(F("n"));
   String contentBase64 = Webserver->arg(F("content"));
   if(contentBase64 != ""){
-    std::vector<StringArray2> elements = decodeContentBlinx(contentBase64, 1, "&");
+    std::vector<StringArray2> elements = decodeContentBlinx(contentBase64, 1, "&", true);
     for(auto element : elements){
       if (element[0] == "delta"){
         time_ask = element[1];
@@ -3453,7 +3462,7 @@ void HandleHttpRequestBlinxConfigAnalog(void)
 
   String contentBase64 = Webserver->arg(F("content"));
   if(contentBase64 != ""){
-    std::vector<StringArray2> elements = decodeContentBlinx(contentBase64, 4, "&");
+    std::vector<StringArray2> elements = decodeContentBlinx(contentBase64, 4, "&", true);
     for(auto element : elements){
       if (element[0] == "port1B"){
         port1AString = element[1];
@@ -3538,7 +3547,7 @@ void HandleHttpRequestBlinxRelay(void)
 
   String contentBase64 = Webserver->arg(F("content"));
   if(contentBase64 != ""){
-    std::vector<StringArray2> elements = decodeContentBlinx(contentBase64, 2, "&");
+    std::vector<StringArray2> elements = decodeContentBlinx(contentBase64, 2, "&", true);
     for(auto element : elements){
       if (element[0] == "device"){
         deviceString = element[1];
@@ -3608,7 +3617,7 @@ void HandleHttpRequestBlinxDisplay(void)
 
   String contentBase64 = Webserver->arg(F("content"));
   if(contentBase64 != ""){
-    std::vector<StringArray2> elements = decodeContentBlinx(contentBase64, 5, "&");
+    std::vector<StringArray2> elements = decodeContentBlinx(contentBase64, 5, "&", true);
     for(auto element : elements){
       if (element[0] == "DisplayMode"){
         DisplayModeString = element[1];
@@ -3679,7 +3688,7 @@ void HandleHttpRequestBlinxPWM(void)
 
   String contentBase64 = Webserver->arg(F("content"));
   if(contentBase64 != ""){
-    std::vector<StringArray2> elements = decodeContentBlinx(contentBase64, 4, "&");
+    std::vector<StringArray2> elements = decodeContentBlinx(contentBase64, 4, "&", true);
     for(auto element : elements){
       if (element[0] == "index"){
         deviceString = element[1];
@@ -3772,7 +3781,7 @@ void HandleHttpRequestBlinxName(void)
 
   String contentBase64 = Webserver->arg(F("content"));
   if(contentBase64 != ""){
-    std::vector<StringArray2> elements = decodeContentBlinx(contentBase64, 1, "&");
+    std::vector<StringArray2> elements = decodeContentBlinx(contentBase64, 1, "&", true);
     for(auto element : elements){
       if (element[0] == "name"){
         newName = element[1];
@@ -3832,14 +3841,14 @@ void HandleHttpRequestBlinxApiGetPort(String idType, String element, int index){
       return;
     }
 
-    std::vector<StringArray2> args = decodeContentBlinx(element, 1, "/");
+    std::vector<StringArray2> args = decodeContentBlinx(element, 1, "/", false);
     HandleHttpRequestBlinxRelay(nmb_total_sensor.id, args[0][1]);
   } else if (idType == "PWM" || idType == "PWM_i"){ // pwm
     idDeviceBlinx nmb_total_sensor = getIdDeviceSensorBlinx(1, index, true);
     if(nmb_total_sensor.name == ""){
       return;
     }
-    std::vector<StringArray2> args = decodeContentBlinx(element, 4, "/");
+    std::vector<StringArray2> args = decodeContentBlinx(element, 4, "/", false);
     String freqPWM, valuePWM, phasePWM;
     for (auto arg : args){
       if (arg[0] == "freq"){
@@ -3857,18 +3866,18 @@ void HandleHttpRequestBlinxApiGetPort(String idType, String element, int index){
 void HandleHttpRequestBlinxApiGet(void){
   String contentBase64 = Webserver->arg(F("content"));
   if(contentBase64 != ""){
-    std::vector<StringArray2> elements = decodeContentBlinx(contentBase64, 1, "&");
+    std::vector<StringArray2> elements = decodeContentBlinx(contentBase64, 1, "&", true);
     if (elements[0][0] == "version"){
       int size_image = 4;
       WSContentBegin(200, CT_HTML);
-      blinx_send_data_sensor(false, PSTR("%s"),TasmotaGlobal.version);
+      blinx_send_data_sensor(false, PSTR("{\"VersionBlinx\" : \"%s\", \"VersionTasmota\" : \"%s\"}"),TasmotaGlobal.versionBlinx, TasmotaGlobal.version);
       WSContentEnd();
     } else if (elements[0][0] == "restart"){
       char command[32];
       snprintf_P(command, sizeof(command), PSTR("Restart 1"));
       ExecuteWebCommand(command);
     } else if (elements[0][0] == "config"){
-      std::vector<StringArray2> args = decodeContentBlinx(elements[0][1], 4, "/");
+      std::vector<StringArray2> args = decodeContentBlinx(elements[0][1], 5, "/", false);
       String port1AString, port1BString, port2AString, port2BString, portDefault;
       for(auto arg : args){
         if (arg[0] == "port1B"){
@@ -3889,7 +3898,7 @@ void HandleHttpRequestBlinxApiGet(void){
     } else { // output sensor
       for(auto element : elements){
         if (element[0] == "screen"){
-          std::vector<StringArray2> args = decodeContentBlinx(element[1], 5, "/");
+          std::vector<StringArray2> args = decodeContentBlinx(element[1], 5, "/", false);
           String DisplayModeString, DisplayDimmerString, DisplaySizeString, DisplayRotateString, DisplayTextString;
           for(auto arg : args){
             if (arg[0] == "DisplayMode"){
