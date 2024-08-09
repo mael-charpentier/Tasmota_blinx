@@ -3576,7 +3576,6 @@ void HandleHttpRequestBlinxRelay(void)
 
 void HandleHttpRequestBlinxRelay(int device, String whatToDoString)
 {
-  AddLog(LOG_LEVEL_INFO, PSTR("aa : %d"), device);
   int whatToDo;
   if (whatToDoString == "off"){
     whatToDo = 0;
